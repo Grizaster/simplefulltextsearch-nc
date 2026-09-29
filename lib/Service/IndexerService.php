@@ -25,13 +25,62 @@ class IndexerService {
 	) {
 	}
 
+	/**
+	 * Konfigurierte Suchbereiche [{owner,folder},...] aus 'scopes' (JSON);
+	 * Alt-Config scope_owner/scope_folder bleibt als weicher Fallback.
+	 * @return list<array{owner:string,folder:string}>
+	 */
+	public static function scopesFromConfig(IAppConfig $appConfig): array {
+		$scopes = [];
+		$raw = $appConfig->getValueString(self::APP_ID, 'scopes', '');
+		if ($raw !== '') {
+			$decoded = json_decode($raw, true);
+			foreach ((is_array($decoded) ? $decoded : []) as $s) {
+				if (is_array($s) && trim((string)($s['owner'] ?? '')) !== '' && trim((string)($s['folder'] ?? '')) !== '') {
+					$scopes[] = ['owner' => trim((string)$s['owner']), 'folder' => self::normalizeFolder((string)$s['folder'])];
+				}
+			}
+		}
+		if ($scopes === []) {
+			$owner = $appConfig->getValueString(self::APP_ID, 'scope_owner', '');
+			if ($owner !== '') {
+				$scopes[] = ['owner' => $owner, 'folder' => self::normalizeFolder($appConfig->getValueString(self::APP_ID, 'scope_folder', '/Documents'))];
+			}
+		}
+		return $scopes;
+	}
+
+	public static function normalizeFolder(string $folder): string {
+		return '/' . trim($folder, "/ \t\n\r\0\x0B");
+	}
+
+	/** Alle konfigurierten Suchbereiche indizieren. */
+	public function indexAll(): array {
+		$totals = ['indexed' => 0, 'skipped' => 0, 'removed' => 0, 'unchanged' => 0, 'scopes' => 0, 'errors' => []];
+		foreach (self::scopesFromConfig($this->appConfig) as $scope) {
+			$stats = $this->indexUser($scope['owner'], $scope['folder']);
+			$totals['scopes']++;
+			foreach (['indexed', 'skipped', 'removed', 'unchanged'] as $k) {
+				$totals[$k] += (int)($stats[$k] ?? 0);
+			}
+			if (isset($stats['error'])) {
+				$totals['errors'][] = $stats['owner'] . ' ' . $stats['folder'] . ': ' . $stats['error'];
+			}
+		}
+		return $totals;
+	}
+
 	/** @return array{owner:string,folder:string,indexed:int,skipped:int,removed:int,unchanged:int,error?:string} */
 	public function indexUser(?string $owner = null, ?string $folder = null): array {
-		$owner = $owner ?? $this->appConfig->getValueString(self::APP_ID, 'scope_owner', '');
-		$folder = $folder ?? $this->appConfig->getValueString(self::APP_ID, 'scope_folder', '/Documents');
+		if ($owner === null || $folder === null) {
+			$first = self::scopesFromConfig($this->appConfig)[0] ?? ['owner' => '', 'folder' => '/'];
+			$owner = $owner ?? $first['owner'];
+			$folder = $folder ?? $first['folder'];
+		}
+		$folder = self::normalizeFolder($folder);
 		$stats = ['owner' => $owner, 'folder' => $folder, 'indexed' => 0, 'skipped' => 0, 'removed' => 0, 'unchanged' => 0];
 		if ($owner === '') {
-			$stats['error'] = 'kein scope_owner gesetzt';
+			$stats['error'] = 'kein Suchbereich gesetzt';
 			return $stats;
 		}
 		try {
@@ -48,7 +97,7 @@ class IndexerService {
 
 		$seen = [];
 		$this->walk($node, $userFolder, $owner, $seen, $stats);
-		$stats['removed'] = $this->mapper->deleteMissing($owner, array_keys($seen));
+		$stats['removed'] = $this->mapper->deleteMissing($owner, $folder, array_keys($seen));
 		return $stats;
 	}
 
@@ -72,7 +121,7 @@ class IndexerService {
 				$stats['skipped']++;
 				continue;
 			}
-			$existing = $this->mapper->findOneByFileId($fileId);
+			$existing = $this->mapper->findOne($owner, $fileId);
 			if ($existing !== null && (int)$existing->getMtime() === $mtime && (int)$existing->getSize() === $size) {
 				$seen[$fileId] = true;
 				$stats['unchanged']++;
@@ -101,7 +150,7 @@ class IndexerService {
 					$this->mapper->update($entry);
 				}
 			} catch (\Throwable $e) {
-				$again = $this->mapper->findOneByFileId($fileId);
+				$again = $this->mapper->findOne($owner, $fileId);
 				if ($again === null) {
 					throw $e;
 				}

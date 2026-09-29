@@ -1,6 +1,10 @@
 <?php
 /** @var array $_ */
 script('dossier', 'admin');
+$scopes = $_['scopes'];
+if ($scopes === []) {
+	$scopes = [['owner' => '', 'folder' => '']];
+}
 ?>
 <div id="dossier-settings" class="section">
 	<h2><?php p($_['titleText']) ?></h2>
@@ -9,13 +13,19 @@ script('dossier', 'admin');
 	<form id="dossier-form"
 	      data-save-url="<?php p($_['saveUrl']) ?>"
 	      data-reindex-url="<?php p($_['reindexUrl']) ?>">
-		<label for="dossier-owner">Nextcloud-Nutzer (Eigentümer des Ordners)</label><br>
-		<input id="dossier-owner" type="text" style="width: 22em"
-		       value="<?php p($_['scope_owner']) ?>" placeholder="z. B. bensn"><br><br>
-
-		<label for="dossier-folder">Ordner (Pfad im Dateibereich dieses Nutzers)</label><br>
-		<input id="dossier-folder" type="text" style="width: 22em"
-		       value="<?php p($_['scope_folder']) ?>" placeholder="z. B. /Documents"><br><br>
+		<label>Suchbereiche — jeder Eintrag ist ein Ordner, der vollständig durchsucht wird</label><br>
+		<div id="dossier-scopes">
+			<?php foreach ($scopes as $scope) { ?>
+			<div class="dossier-scope-row" style="margin-bottom: 6px;">
+				<input class="dossier-scope-owner" type="text" style="width: 14em"
+				       value="<?php p($scope['owner']) ?>" placeholder="Nutzer, z. B. bensn">
+				<input class="dossier-scope-folder" type="text" style="width: 24em"
+				       value="<?php p($scope['folder']) ?>" placeholder="Ordner, z. B. /Documents">
+				<button type="button" class="dossier-scope-remove">−</button>
+			</div>
+			<?php } ?>
+		</div>
+		<button type="button" id="dossier-scope-add">+ Suchbereich hinzufügen</button><br><br>
 
 		<button id="dossier-save" class="primary">Speichern</button>
 		<button id="dossier-reindex">Jetzt neu indizieren</button>

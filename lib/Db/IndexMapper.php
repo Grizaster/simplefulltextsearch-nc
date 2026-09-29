@@ -17,11 +17,12 @@ class IndexMapper extends QBMapper {
 		parent::__construct($db, 'dossier_index', IndexEntry::class);
 	}
 
-	public function findOneByFileId(int $fileId): ?IndexEntry {
+	public function findOne(string $owner, int $fileId): ?IndexEntry {
 		$qb = $this->db->getQueryBuilder();
 		$qb->select('*')
 			->from($this->getTableName())
 			->where($qb->expr()->eq('file_id', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT)))
+			->andWhere($qb->expr()->eq('owner', $qb->createNamedParameter($owner)))
 			->setMaxResults(1);
 		$row = $qb->executeQuery()->fetch();
 		if ($row === false) {
@@ -35,16 +36,22 @@ class IndexMapper extends QBMapper {
 	 *
 	 * @return array<int, array{file_id:int,name:string,path:string,text:string}>
 	 */
-	public function search(string $owner, string $term, int $limit): array {
+	/**
+	 * @param list<array{owner:string,folder:string}> $scopes
+	 */
+	public function search(array $scopes, string $term, int $limit): array {
 		$limit = max(1, min(100, $limit));
 		$boolean = $this->buildBoolean($term);
 		$rows = [];
+		if ($scopes === []) {
+			return [];
+		}
 		if ($boolean !== '') {
 			try {
 				$qb = $this->db->getQueryBuilder();
 				$qb->select('file_id', 'name', 'path', 'text')
 					->from($this->getTableName())
-					->where($qb->expr()->eq('owner', $qb->createNamedParameter($owner)))
+					->where($this->scopeExpr($qb, $scopes))
 					->andWhere('MATCH(`name`, `text`) AGAINST (' . $qb->createNamedParameter($boolean) . ' IN BOOLEAN MODE)')
 					->setMaxResults($limit);
 				$rows = $qb->executeQuery()->fetchAll();
@@ -56,7 +63,7 @@ class IndexMapper extends QBMapper {
 			$qb = $this->db->getQueryBuilder();
 			$qb->select('file_id', 'name', 'path', 'text')
 				->from($this->getTableName())
-				->where($qb->expr()->eq('owner', $qb->createNamedParameter($owner)))
+				->where($this->scopeExpr($qb, $scopes))
 				->andWhere($qb->expr()->orX(
 					$qb->expr()->iLike('name', $qb->createNamedParameter('%' . $this->escapeLike($term) . '%')),
 					$qb->expr()->iLike('text', $qb->createNamedParameter('%' . $this->escapeLike($term) . '%'))
@@ -74,14 +81,20 @@ class IndexMapper extends QBMapper {
 		}, $rows);
 	}
 
-	/** @param list<int> $keepFileIds */
-	public function deleteMissing(string $owner, array $keepFileIds): int {
+	/**
+	 * Nur Zeilen UNTERHALB von $folder (Praefix) werden geprueft/geloescht — so kann
+	 * der Lauf eines Suchbereichs keinen anderen Bereich verschlucken (Multi-Scope!).
+	 * @param list<int> $keepFileIds
+	 */
+	public function deleteMissing(string $owner, string $folder, array $keepFileIds): int {
 		// Erst Kandidaten holen, dann in 500er-Bloecken per positivem IN loeschen:
 		// NOT IN mit >1000 Parametern wirft QueryException (Expressions-Grenze).
+		$prefix = $this->prefixOf($folder);
 		$qb = $this->db->getQueryBuilder();
 		$qb->select('file_id')
 			->from($this->getTableName())
-			->where($qb->expr()->eq('owner', $qb->createNamedParameter($owner)));
+			->where($qb->expr()->eq('owner', $qb->createNamedParameter($owner)))
+			->andWhere($qb->expr()->like('path', $qb->createNamedParameter($this->escapeLike($prefix) . '%')));
 		$existing = array_map('intval', array_column($qb->executeQuery()->fetchAll(), 'file_id'));
 		$stale = array_values(array_diff($existing, $keepFileIds));
 		$deleted = 0;
@@ -89,6 +102,7 @@ class IndexMapper extends QBMapper {
 			$qb = $this->db->getQueryBuilder();
 			$qb->delete($this->getTableName())
 				->where($qb->expr()->eq('owner', $qb->createNamedParameter($owner)))
+				->andWhere($qb->expr()->like('path', $qb->createNamedParameter($this->escapeLike($prefix) . '%')))
 				->andWhere($qb->expr()->in('file_id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
 			$deleted += (int)$qb->executeStatement();
 		}
@@ -100,6 +114,26 @@ class IndexMapper extends QBMapper {
 		$qb->delete($this->getTableName())
 			->where($qb->expr()->eq('file_id', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT)));
 		$qb->executeStatement();
+	}
+
+	/** Ordner -> Praefix fuer Pfad-LIKE (Pfade immer mit fuehrendem Slash). */
+	private function prefixOf(string $folder): string {
+		return rtrim($folder, '/') . '/';
+	}
+
+	/**
+	 * OR-Gruppe ueber alle Suchbereiche: (owner = ? AND path LIKE 'ordner/%').
+	 * @param list<array{owner:string,folder:string}> $scopes
+	 */
+	private function scopeExpr(IQueryBuilder $qb, array $scopes) {
+		$or = $qb->expr()->orX();
+		foreach ($scopes as $s) {
+			$or->add($qb->expr()->andX(
+				$qb->expr()->eq('owner', $qb->createNamedParameter($s['owner'])),
+				$qb->expr()->like('path', $qb->createNamedParameter($this->escapeLike($this->prefixOf($s['folder'])) . '%')),
+			));
+		}
+		return $or;
 	}
 
 	private function buildBoolean(string $term): string {

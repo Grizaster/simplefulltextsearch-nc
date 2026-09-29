@@ -24,21 +24,34 @@ class SettingsController extends Controller {
 	/**
 	 * @AdminRequired
 	 */
-	public function save(string $scopeOwner = '', string $scopeFolder = ''): JSONResponse {
-		$owner = trim($scopeOwner);
-		$folder = '/' . trim($scopeFolder, "/ \t\n\r\0\x0B");
-		if ($owner === '' || $folder === '/') {
-			return new JSONResponse(['status' => 'error', 'message' => 'Nutzer und Ordner angeben'], Http::STATUS_BAD_REQUEST);
+	public function save(string $scopes = '[]'): JSONResponse {
+		$parsed = [];
+		$decoded = json_decode($scopes, true);
+		foreach ((is_array($decoded) ? $decoded : []) as $s) {
+			if (!is_array($s)) {
+				continue;
+			}
+			$owner = trim((string)($s['owner'] ?? ''));
+			$folder = IndexerService::normalizeFolder((string)($s['folder'] ?? ''));
+			if ($owner === '' || $folder === '/') {
+				continue;
+			}
+			$parsed[] = ['owner' => $owner, 'folder' => $folder];
+			if (count($parsed) >= 20) {
+				break;
+			}
 		}
-		$this->appConfig->setValueString(Application::APP_ID, 'scope_owner', $owner);
-		$this->appConfig->setValueString(Application::APP_ID, 'scope_folder', $folder);
-		return new JSONResponse(['status' => 'ok', 'owner' => $owner, 'folder' => $folder]);
+		if ($parsed === []) {
+			return new JSONResponse(['status' => 'error', 'message' => 'Mindestens einen Suchbereich mit Nutzer und Ordner angeben'], Http::STATUS_BAD_REQUEST);
+		}
+		$this->appConfig->setValueString(Application::APP_ID, 'scopes', json_encode(array_values($parsed)));
+		return new JSONResponse(['status' => 'ok', 'scopes' => $parsed]);
 	}
 
 	/**
 	 * @AdminRequired
 	 */
 	public function reindex(): JSONResponse {
-		return new JSONResponse(['status' => 'ok', 'stats' => $this->indexer->indexUser()]);
+		return new JSONResponse(['status' => 'ok', 'stats' => $this->indexer->indexAll()]);
 	}
 }

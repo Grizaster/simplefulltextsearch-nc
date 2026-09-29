@@ -14,13 +14,15 @@ text snippet from inside the document; tapping opens the file.
 - Scanned pages are OCR'd (`ocrmypdf`, optional) so image-only PDFs become searchable
 - Search results with content snippets and deep links to the file
 - Quiet background indexing every 30 minutes — only new and changed files are touched
-- Everything in the Nextcloud database (MySQL/MariaDB `FULLTEXT` index,
-  portable `LIKE` fallback for other databases)
+- Everything in the Nextcloud database (MariaDB/MySQL `FULLTEXT` index over
+  `name` and `text` — a hard requirement, see below)
 
 ## Requirements
 
 - Nextcloud **33 – 35**
-- MySQL or MariaDB recommended (other databases work, using the slower `LIKE` fallback)
+- **MariaDB or MySQL with InnoDB `FULLTEXT` support — required.** The index uses
+  a real `FULLTEXT` key (this is where the speed comes from); PostgreSQL and
+  SQLite are **not** supported.
 - CLI tools on the server:
   - `pdftotext` (package `poppler-utils`) — PDF text extraction
   - `unzip` — Office document text extraction

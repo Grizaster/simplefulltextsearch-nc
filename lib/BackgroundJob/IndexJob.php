@@ -21,9 +21,9 @@ class IndexJob extends TimedJob {
 
 	protected function run($argument): void {
 		try {
-			$stats = $this->indexer->indexUser();
-			if (isset($stats['error'])) {
-				$this->logger->info('dossier: Index-Lauf uebersprungen: ' . $stats['error']);
+			$stats = $this->indexer->indexAll();
+			foreach ($stats['errors'] as $error) {
+				$this->logger->info('dossier: Index-Lauf: ' . $error);
 			}
 		} catch (\Throwable $e) {
 			$this->logger->error('dossier: Index-Job fehlgeschlagen: ' . $e->getMessage());

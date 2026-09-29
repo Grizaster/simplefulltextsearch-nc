@@ -50,8 +50,8 @@ class Provider implements IProvider {
 
 	public function search(IUser $user, ISearchQuery $query): SearchResult {
 		$term = $query->getTerm();
-		$owner = $this->appConfig->getValueString(IndexerService::APP_ID, 'scope_owner', '');
-		$rows = $owner === '' ? [] : $this->mapper->search($owner, $term, $query->getLimit());
+		$scopes = IndexerService::scopesFromConfig($this->appConfig);
+		$rows = $scopes === [] ? [] : $this->mapper->search($scopes, $term, $query->getLimit());
 		$userFolder = $this->rootFolder->getUserFolder($user->getUID());
 		$entries = [];
 		foreach ($rows as $row) {
