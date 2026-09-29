@@ -9,7 +9,9 @@ text snippet from inside the document; tapping opens the file.
 
 ## Features
 
-- Indexes **one folder of one user** (configurable in the admin settings)
+- Indexes one or more **search scopes** (a user + folder pair each) — e.g. three
+  folders = three scopes, all results in one group. Scopes may belong to
+  different users (results are permission-checked per searching user).
 - Text extraction: PDF (`pdftotext`), Office documents (docx/odt), plain text formats
 - Scanned pages are OCR'd (`ocrmypdf`, optional) so image-only PDFs become searchable
 - Search results with content snippets and deep links to the file
@@ -36,14 +38,14 @@ git clone <this-repo> dossier      # folder name must be the app id: dossier
 sudo -u www-data php occ app:enable dossier
 ```
 
-Then open **Settings → Administration → Document search**, set the owner and
-the folder to index (defaults to `bensn` / `/Documents`). A first full index
-runs on save; the search is usable immediately afterwards.
+Then open **Settings → Administration → Document search** and add one or more
+search scopes (user + folder, e.g. `bensn` / `/Documents`). A first full index
+runs on demand (or via the button in the settings); the search is usable
+immediately afterwards.
 
 ## How it works
-
-A background job (`IndexJob`, every 30 minutes via the Nextcloud cron) walks the
-configured folder and upserts extracted text into the `dossier_index` table
+A background job (`IndexJob`, every 30 minutes via the Nextcloud cron) walks every
+configured scope and upserts extracted text into the `dossier_index` table
 (plus a MySQL/MariaDB `FULLTEXT` index over `name` and `text`). Deleted files
 are pruned on the next run. An incremental run touches only new or modified
 files. You can trigger a full reindex at any time in the admin settings.
