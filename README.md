@@ -1,0 +1,73 @@
+# SimpleFullTextFileSearch
+
+Opinionated, dependency-light full-text search over a folder of documents for
+Nextcloud. The index lives in your Nextcloud database — no search server, no
+extra services, no AI. Includes OCR for scanned pages.
+
+Results appear in the Nextcloud unified search (web and mobile apps) with a
+text snippet from inside the document; tapping opens the file.
+
+## Features
+
+- Indexes **one folder of one user** (configurable in the admin settings)
+- Text extraction: PDF (`pdftotext`), Office documents (docx/odt), plain text formats
+- Scanned pages are OCR'd (`ocrmypdf`, optional) so image-only PDFs become searchable
+- Search results with content snippets and deep links to the file
+- Quiet background indexing every 30 minutes — only new and changed files are touched
+- Everything in the Nextcloud database (MySQL/MariaDB `FULLTEXT` index,
+  portable `LIKE` fallback for other databases)
+
+## Requirements
+
+- Nextcloud **33 – 35**
+- MySQL or MariaDB recommended (other databases work, using the slower `LIKE` fallback)
+- CLI tools on the server:
+  - `pdftotext` (package `poppler-utils`) — PDF text extraction
+  - `unzip` — Office document text extraction
+  - `ocrmypdf` + `tesseract` — *optional*, OCR for scanned documents
+
+## Installation
+
+```bash
+cd /path/to/nextcloud/apps
+git clone <this-repo> dossier      # folder name must be the app id: dossier
+sudo -u www-data php occ app:enable dossier
+```
+
+Then open **Settings → Administration → Document search**, set the owner and
+the folder to index (defaults to `bensn` / `/Documents`). A first full index
+runs on save; the search is usable immediately afterwards.
+
+## How it works
+
+A background job (`IndexJob`, every 30 minutes via the Nextcloud cron) walks the
+configured folder and upserts extracted text into the `dossier_index` table
+(plus a MySQL/MariaDB `FULLTEXT` index over `name` and `text`). Deleted files
+are pruned on the next run. An incremental run touches only new or modified
+files. You can trigger a full reindex at any time in the admin settings.
+
+## Known issues
+
+**Nextcloud iOS 35.0.0** opens unified-search results natively only for the
+provider ids `files` and `fulltextsearch`; everything else falls back to a
+webview. For native document opening on iOS 35.0.0 set:
+
+```bash
+sudo -u www-data php occ config:app:set dossier provider_id --value=fulltextsearch
+```
+
+Do **not** use `files` (collides with the core files provider). After updating
+to Nextcloud iOS 36+ you can remove this setting again (36+ opens results of
+any provider natively via the `fileId`/`path` entry attributes — the app sets
+them regardless of the configured provider id).
+
+## Development
+
+- `tests/eldotest.php` — end-to-end CLI test (index + provider search)
+- App id / namespace: `dossier` / `OCA\Dossier`
+- The search provider id is configurable (`provider_id`, default
+  `simplefulltextsearch`)
+
+## License
+
+AGPL-3.0-only — see [LICENSE](LICENSE).

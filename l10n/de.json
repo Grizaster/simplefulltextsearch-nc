@@ -1,0 +1,7 @@
+{
+	"translations": {
+		"Document search": "Dokumentensuche",
+		"Full-text search for your documents: the chosen folder becomes your digital file. Every PDF, every office document and even scanned pages (via OCR) are extracted and made searchable. Results appear directly in the Nextcloud search bar (web and app) with a text snippet from the document; tapping opens the file. New and changed files are indexed quietly in the background every 30 minutes. Technical name: SimpleFullTextFileSearch.": "Volltextsuche für deine Dokumente: Der gewählte Ordner wird zum digitalen Aktenbestand — jede PDF, jedes Office-Dokument und auch gescannte Seiten (per OCR) werden ausgelesen und durchsuchbar gemacht. Die Treffer erscheinen direkt in der Nextcloud-Suchleiste (Web und App) mit einem Textausschnitt aus dem Dokument; ein Tippen öffnet die Datei. Neue und geänderte Dateien zieht die Suche alle 30 Minuten still im Hintergrund nach. Technischer Name: SimpleFullTextFileSearch."
+	},
+	"pluralForm": "nplurals=2; plural=(n != 1);"
+}
