@@ -11,12 +11,14 @@ use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IAppConfig;
 use OCP\IRequest;
+use OCP\IUserManager;
 
 class SettingsController extends Controller {
 	public function __construct(
 		IRequest $request,
 		private IAppConfig $appConfig,
 		private IndexerService $indexer,
+		private IUserManager $userManager,
 	) {
 		parent::__construct(Application::APP_ID, $request);
 	}
@@ -33,7 +35,7 @@ class SettingsController extends Controller {
 			}
 			$owner = trim((string)($s['owner'] ?? ''));
 			$folder = IndexerService::normalizeFolder((string)($s['folder'] ?? ''));
-			if ($owner === '' || $folder === '/') {
+			if ($owner === '' || $folder === '/' || $this->userManager->get($owner) === null) {
 				continue;
 			}
 			$parsed[] = ['owner' => $owner, 'folder' => $folder];

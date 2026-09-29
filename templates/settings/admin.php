@@ -17,8 +17,15 @@ if ($scopes === []) {
 		<div id="dossier-scopes">
 			<?php foreach ($scopes as $scope) { ?>
 			<div class="dossier-scope-row" style="margin-bottom: 6px;">
-				<input class="dossier-scope-owner" type="text" style="width: 14em"
-				       value="<?php p($scope['owner']) ?>" placeholder="Nutzer, z. B. bensn">
+				<select class="dossier-scope-owner" style="width: 14em">
+					<option value=""<?php if ($scope['owner'] === '') { ?> selected<?php } ?>>— Nutzer wählen —</option>
+					<?php foreach ($_['users'] as $uid) { ?>
+					<option value="<?php p($uid) ?>"<?php if ($scope['owner'] === $uid) { ?> selected<?php } ?>><?php p($uid) ?></option>
+					<?php } ?>
+					<?php if ($scope['owner'] !== '' && !in_array($scope['owner'], $_['users'], true)) { ?>
+					<option value="<?php p($scope['owner']) ?>" selected><?php p($scope['owner']) ?> (nicht mehr vorhanden)</option>
+					<?php } ?>
+				</select>
 				<input class="dossier-scope-folder" type="text" style="width: 24em"
 				       value="<?php p($scope['folder']) ?>" placeholder="Ordner, z. B. /Documents">
 				<button type="button" class="dossier-scope-remove">−</button>
