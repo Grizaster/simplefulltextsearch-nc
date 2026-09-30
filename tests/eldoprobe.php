@@ -14,7 +14,7 @@ $m('M1 vor boot');
 require '/var/www/nextcloud/lib/base.php';
 $m('M2 boot_ok');
 
-$x = \OCP\Server::get(\OCA\Dossier\Service\IndexerService::class);
+$x = \OCP\Server::get(\OCA\SimpleFullTextFileSearch\Service\IndexerService::class);
 $m('M3 got_indexer');
 
 $uf = \OCP\Server::get(\OCP\Files\IRootFolder::class)->getUserFolder('bensn');

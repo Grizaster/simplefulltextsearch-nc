@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OCA\Dossier\Service;
+namespace OCA\SimpleFullTextFileSearch\Service;
 
 /**
  * Text-Extraktion ohne PHP-Extensions: pdftotext (schnell), ocrmypdf --sidecar

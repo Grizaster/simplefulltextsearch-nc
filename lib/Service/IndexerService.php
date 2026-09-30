@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace OCA\Dossier\Service;
+namespace OCA\SimpleFullTextFileSearch\Service;
 
-use OCA\Dossier\Db\IndexEntry;
-use OCA\Dossier\Db\IndexMapper;
+use OCA\SimpleFullTextFileSearch\Db\IndexEntry;
+use OCA\SimpleFullTextFileSearch\Db\IndexMapper;
 use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
@@ -14,7 +14,7 @@ use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
 
 class IndexerService {
-	public const APP_ID = 'dossier';
+	public const APP_ID = 'simplefulltextsearch';
 
 	public function __construct(
 		private IndexMapper $mapper,
@@ -131,7 +131,7 @@ class IndexerService {
 				$local = $node->getStorage()->getLocalFile($node->getInternalPath());
 				$text = $local !== false ? $this->extractor->extract($local, $node->getName()) : '';
 			} catch (\Throwable $e) {
-				$this->logger->warning('dossier: Extraktion fehlgeschlagen für {f}: {e}', ['f' => $node->getName(), 'e' => $e->getMessage()]);
+				$this->logger->warning('simplefulltextsearch: Extraktion fehlgeschlagen für {f}: {e}', ['f' => $node->getName(), 'e' => $e->getMessage()]);
 				$text = '';
 			}
 			$entry = $existing ?? new IndexEntry();

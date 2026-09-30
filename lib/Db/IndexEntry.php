@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OCA\Dossier\Db;
+namespace OCA\SimpleFullTextFileSearch\Db;
 
 use OCP\AppFramework\Db\Entity;
 

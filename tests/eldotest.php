@@ -1,9 +1,9 @@
 <?php
-// End-to-End-Test Dossier: Indexierung + Provider-Suche (läuft via php8.3 CLI)
+// End-to-End-Test SimpleFullTextFileSearch: Indexierung + Provider-Suche (läuft via php8.3 CLI)
 require_once '/var/www/nextcloud/lib/base.php';
 
-use OCA\Dossier\Search\Provider;
-use OCA\Dossier\Service\IndexerService;
+use OCA\SimpleFullTextFileSearch\Search\Provider;
+use OCA\SimpleFullTextFileSearch\Service\IndexerService;
 use OCP\Search\IFilter;
 use OCP\Search\IFilterCollection;
 use OCP\Search\ISearchQuery;

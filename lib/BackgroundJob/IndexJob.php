@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace OCA\Dossier\BackgroundJob;
+namespace OCA\SimpleFullTextFileSearch\BackgroundJob;
 
-use OCA\Dossier\Service\IndexerService;
+use OCA\SimpleFullTextFileSearch\Service\IndexerService;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\TimedJob;
 use Psr\Log\LoggerInterface;
@@ -23,10 +23,10 @@ class IndexJob extends TimedJob {
 		try {
 			$stats = $this->indexer->indexAll();
 			foreach ($stats['errors'] as $error) {
-				$this->logger->info('dossier: Index-Lauf: ' . $error);
+				$this->logger->info('simplefulltextsearch: Index-Lauf: ' . $error);
 			}
 		} catch (\Throwable $e) {
-			$this->logger->error('dossier: Index-Job fehlgeschlagen: ' . $e->getMessage());
+			$this->logger->error('simplefulltextsearch: Index-Job fehlgeschlagen: ' . $e->getMessage());
 		}
 	}
 }

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OCA\Dossier\Settings;
+namespace OCA\SimpleFullTextFileSearch\Settings;
 
 use OCP\Settings\IIconSection;
 use OCP\IL10N;
@@ -14,7 +14,7 @@ class AdminSection implements IIconSection {
 	}
 
 	public function getId(): string {
-		return 'dossier';
+		return 'simplefulltextsearch';
 	}
 
 	public function getName(): string {

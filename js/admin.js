@@ -1,46 +1,46 @@
 document.addEventListener('DOMContentLoaded', () => {
-	const form = document.getElementById('dossier-form');
+	const form = document.getElementById('simplefulltextsearch-form');
 	if (!form) {
 		return;
 	}
-	const status = document.getElementById('dossier-status');
-	const list = document.getElementById('dossier-scopes');
+	const status = document.getElementById('simplefulltextsearch-status');
+	const list = document.getElementById('simplefulltextsearch-scopes');
 	const headers = () => ({
 		'Content-Type': 'application/json',
 		requesttoken: document.head.getAttribute('data-requesttoken'),
 	});
 
-	const collect = () => [...list.querySelectorAll('.dossier-scope-row')]
+	const collect = () => [...list.querySelectorAll('.simplefulltextsearch-scope-row')]
 		.map((row) => ({
-			owner: row.querySelector('.dossier-scope-owner').value.trim(),
-			folder: row.querySelector('.dossier-scope-folder').value.trim(),
+			owner: row.querySelector('.simplefulltextsearch-scope-owner').value.trim(),
+			folder: row.querySelector('.simplefulltextsearch-scope-folder').value.trim(),
 		}))
 		.filter((s) => s.owner !== '' && s.folder !== '');
 
 	list.addEventListener('click', (ev) => {
-		const btn = ev.target.closest('.dossier-scope-remove');
+		const btn = ev.target.closest('.simplefulltextsearch-scope-remove');
 		if (!btn) {
 			return;
 		}
 		ev.preventDefault();
-		if (list.querySelectorAll('.dossier-scope-row').length > 1) {
-			btn.closest('.dossier-scope-row').remove();
+		if (list.querySelectorAll('.simplefulltextsearch-scope-row').length > 1) {
+			btn.closest('.simplefulltextsearch-scope-row').remove();
 		}
 	});
 
-	document.getElementById('dossier-scope-add').addEventListener('click', (ev) => {
+	document.getElementById('simplefulltextsearch-scope-add').addEventListener('click', (ev) => {
 		ev.preventDefault();
-		const template = list.querySelector('.dossier-scope-row');
+		const template = list.querySelector('.simplefulltextsearch-scope-row');
 		if (!template) {
 			return;
 		}
 		const row = template.cloneNode(true);
-		row.querySelector('.dossier-scope-owner').value = '';
-		row.querySelector('.dossier-scope-folder').value = '';
+		row.querySelector('.simplefulltextsearch-scope-owner').value = '';
+		row.querySelector('.simplefulltextsearch-scope-folder').value = '';
 		list.appendChild(row);
 	});
 
-	document.getElementById('dossier-save').addEventListener('click', async (ev) => {
+	document.getElementById('simplefulltextsearch-save').addEventListener('click', async (ev) => {
 		ev.preventDefault();
 		const scopes = collect();
 		status.textContent = 'Speichere …';
@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	});
 
-	document.getElementById('dossier-reindex').addEventListener('click', async (ev) => {
+	document.getElementById('simplefulltextsearch-reindex').addEventListener('click', async (ev) => {
 		ev.preventDefault();
 		status.textContent = 'Indiziere … (kann bei vielen Dokumenten etwas dauern)';
 		try {

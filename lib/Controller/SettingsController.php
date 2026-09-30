@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace OCA\Dossier\Controller;
+namespace OCA\SimpleFullTextFileSearch\Controller;
 
-use OCA\Dossier\AppInfo\Application;
-use OCA\Dossier\Service\IndexerService;
+use OCA\SimpleFullTextFileSearch\AppInfo\Application;
+use OCA\SimpleFullTextFileSearch\Service\IndexerService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\JSONResponse;

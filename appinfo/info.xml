@@ -1,23 +1,23 @@
 <?xml version="1.0"?>
 <info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
-  <id>dossier</id>
-  <name>Dossier</name>
+  <id>simplefulltextsearch</id>
+  <name>SimpleFullTextFileSearch</name>
   <summary>Volltextsuche ueber einen gewaehlten Dokumente-Ordner</summary>
   <description><![CDATA[Ordner-scoped Volltextsuche (wie Eldoar, nativ in Nextcloud): indexiert nur den in den Admin-Einstellungen gewaehlten Ordner inkl. PDF-/Office-Inhalt und OCR-Text gescannter Dokumente. Treffer erscheinen direkt in der Nextcloud-Suchleiste.]]></description>
   <version>1.0.0</version>
   <licence>agpl</licence>
   <author>NikolAI</author>
-  <namespace>Dossier</namespace>
+  <namespace>SimpleFullTextFileSearch</namespace>
   <category>tools</category>
   <dependencies>
-    <nextcloud min-version="30" max-version="34"/>
+    <nextcloud min-version="33" max-version="35"/>
   </dependencies>
   <settings>
-    <admin>OCA\Dossier\Settings\AdminSettings</admin>
-    <admin-section>OCA\Dossier\Settings\AdminSection</admin-section>
+    <admin>OCA\SimpleFullTextFileSearch\Settings\AdminSettings</admin>
+    <admin-section>OCA\SimpleFullTextFileSearch\Settings\AdminSection</admin-section>
   </settings>
   <background-jobs>
-    <job>OCA\Dossier\BackgroundJob\IndexJob</job>
+    <job>OCA\SimpleFullTextFileSearch\BackgroundJob\IndexJob</job>
   </background-jobs>
 </info>

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OCA\Dossier\Db;
+namespace OCA\SimpleFullTextFileSearch\Db;
 
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Db\QBMapper;
@@ -14,7 +14,7 @@ use OCP\IDBConnection;
  */
 class IndexMapper extends QBMapper {
 	public function __construct(IDBConnection $db) {
-		parent::__construct($db, 'dossier_index', IndexEntry::class);
+		parent::__construct($db, 'simplefulltextsearch_index', IndexEntry::class);
 	}
 
 	public function findOne(string $owner, int $fileId): ?IndexEntry {

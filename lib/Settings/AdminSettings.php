@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace OCA\Dossier\Settings;
+namespace OCA\SimpleFullTextFileSearch\Settings;
 
-use OCA\Dossier\AppInfo\Application;
-use OCA\Dossier\Service\IndexerService;
+use OCA\SimpleFullTextFileSearch\AppInfo\Application;
+use OCA\SimpleFullTextFileSearch\Service\IndexerService;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\IAppConfig;
 use OCP\IL10N;
@@ -23,7 +23,7 @@ class AdminSettings implements ISettings {
 	}
 
 	public function getSection(): string {
-		return 'dossier';
+		return 'simplefulltextsearch';
 	}
 
 	public function getPriority(): int {
@@ -36,8 +36,8 @@ class AdminSettings implements ISettings {
 			'hintText' => $this->l10n->t('Full-text search for your documents: the chosen folder becomes your digital file. Every PDF, every office document and even scanned pages (via OCR) are extracted and made searchable. Results appear directly in the Nextcloud search bar (web and app) with a text snippet from the document; tapping opens the file. New and changed files are indexed quietly in the background every 30 minutes. Technical name: SimpleFullTextFileSearch.'),
 			'scopes' => IndexerService::scopesFromConfig($this->appConfig),
 			'users' => $this->userIds(),
-			'saveUrl' => $this->urlGenerator->linkToRoute('dossier.settings#save'),
-			'reindexUrl' => $this->urlGenerator->linkToRoute('dossier.settings#reindex'),
+			'saveUrl' => $this->urlGenerator->linkToRoute('simplefulltextsearch.settings#save'),
+			'reindexUrl' => $this->urlGenerator->linkToRoute('simplefulltextsearch.settings#reindex'),
 		]);
 	}
 

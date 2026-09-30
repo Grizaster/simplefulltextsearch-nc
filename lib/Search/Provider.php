@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace OCA\Dossier\Search;
+namespace OCA\SimpleFullTextFileSearch\Search;
 
-use OCA\Dossier\Db\IndexMapper;
-use OCA\Dossier\Service\IndexerService;
+use OCA\SimpleFullTextFileSearch\Db\IndexMapper;
+use OCA\SimpleFullTextFileSearch\Service\IndexerService;
 use OCP\Files\IMimeTypeDetector;
 use OCP\Files\IRootFolder;
 use OCP\Files\Node;
@@ -35,7 +35,7 @@ class Provider implements IProvider {
 		// Konfigurierbar wegen Nextcloud-iOS 35.0.0: die App oeffnet nur Treffer der
 		// Provider "files"/"fulltextsearch" nativ (Rest = Webview-Fallback). Default ist
 		// die eigene, kollisionsfreie ID. Wer natives Oeffnen unter iOS 35.0.0 moechte,
-		// setzt: occ config:app:set dossier provider_id --value=fulltextsearch
+		// setzt: occ config:app:set simplefulltextsearch provider_id --value=fulltextsearch
 		// NIE 'files' waehlen (Kollision mit dem Core-Provider!). Details: README.
 		return $this->appConfig->getValueString(IndexerService::APP_ID, 'provider_id', 'simplefulltextsearch');
 	}

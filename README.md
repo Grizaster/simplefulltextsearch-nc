@@ -34,8 +34,8 @@ text snippet from inside the document; tapping opens the file.
 
 ```bash
 cd /path/to/nextcloud/apps
-git clone <this-repo> dossier      # folder name must be the app id: dossier
-sudo -u www-data php occ app:enable dossier
+git clone <this-repo> simplefulltextsearch      # folder name must be the app id: simplefulltextsearch
+sudo -u www-data php occ app:enable simplefulltextsearch
 ```
 
 Then open **Settings → Administration → Document search** and add one or more
@@ -45,7 +45,7 @@ immediately afterwards.
 
 ## How it works
 A background job (`IndexJob`, every 30 minutes via the Nextcloud cron) walks every
-configured scope and upserts extracted text into the `dossier_index` table
+configured scope and upserts extracted text into the `simplefulltextsearch_index` table
 (plus a MySQL/MariaDB `FULLTEXT` index over `name` and `text`). Deleted files
 are pruned on the next run. An incremental run touches only new or modified
 files. You can trigger a full reindex at any time in the admin settings.
@@ -57,7 +57,7 @@ provider ids `files` and `fulltextsearch`; everything else falls back to a
 webview. For native document opening on iOS 35.0.0 set:
 
 ```bash
-sudo -u www-data php occ config:app:set dossier provider_id --value=fulltextsearch
+sudo -u www-data php occ config:app:set simplefulltextsearch provider_id --value=fulltextsearch
 ```
 
 Do **not** use `files` (collides with the core files provider). After updating
@@ -68,7 +68,7 @@ them regardless of the configured provider id).
 ## Development
 
 - `tests/eldotest.php` — end-to-end CLI test (index + provider search)
-- App id / namespace: `dossier` / `OCA\Dossier`
+- App id / namespace: `simplefulltextsearch` / `OCA\SimpleFullTextFileSearch`
 - The search provider id is configurable (`provider_id`, default
   `simplefulltextsearch`)
 

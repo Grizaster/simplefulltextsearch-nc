@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OCA\Dossier\Migration;
+namespace OCA\SimpleFullTextFileSearch\Migration;
 
 use Closure;
 use OCP\DB\ISchemaWrapper;
@@ -18,15 +18,15 @@ class Version2ScopeMigration extends SimpleMigrationStep {
 	public function changeSchema(IOutput $output, Closure $schemaClosure, array $options): ?ISchemaWrapper {
 		/** @var ISchemaWrapper $schema */
 		$schema = $schemaClosure();
-		if (!$schema->hasTable('dossier_index')) {
+		if (!$schema->hasTable('simplefulltextsearch_index')) {
 			return null;
 		}
-		$table = $schema->getTable('dossier_index');
-		if ($table->hasIndex('dossier_file_idx')) {
-			$table->dropIndex('dossier_file_idx');
+		$table = $schema->getTable('simplefulltextsearch_index');
+		if ($table->hasIndex('simplefulltextsearch_file_idx')) {
+			$table->dropIndex('simplefulltextsearch_file_idx');
 		}
-		if (!$table->hasIndex('dossier_file_uix')) {
-			$table->addUniqueIndex(['file_id', 'owner'], 'dossier_file_uix');
+		if (!$table->hasIndex('simplefulltextsearch_file_uix')) {
+			$table->addUniqueIndex(['file_id', 'owner'], 'simplefulltextsearch_file_uix');
 		}
 		return $schema;
 	}
