@@ -70,14 +70,20 @@ class Provider implements IProvider {
 		$thumbnailUrl = $this->previewManager->isMimeSupported($mime)
 			? $this->urlGenerator->linkToRouteAbsolute('core.Preview.getPreviewByFileId', ['x' => 32, 'y' => 32, 'fileId' => $row['file_id']])
 			: '';
-		// App-35.0.0-Vertrag (case "fulltextsearch"): resourceUrl = Files-Deep-Link
-		// ?dir=<Ordner MIT trailing slash>&scrollto=<Dateiname>. Die App konkateniert
-		// dir+filename zum DAV-Pfad und oeffnet nativ. Jeder Eintrag MUSS beide
-		// Parameter tragen (guard reisst sonst das ganze Ergebnis ab).
+		// Deep-Link '/f/<fileid>' = kanonischer Datei-Link ("interne Verknuepfung",
+		// Route files.View.showFile): der Server leitet auf die Files-Ansicht weiter
+		// und oeffnet die Datei DIREKT im Viewer (redirectToFile setzt openfile=true).
+		// Der Alt-Parameter scrollto wird von der NC34-Web-App ignoriert (Legacy der
+		// Alt-Files-App) — ohne /f/<fileid> landet man nur im Ordner.
+		// App-35.0.0-Vertrag (case "fulltextsearch"): die App liest AUSCHLIESSLICH die
+		// Query-Parameter dir (MIT trailing slash) + scrollto (Dateiname), konkateniert
+		// beide zum DAV-Pfad und oeffnet nativ — Pfad und zusaetzliche Query-Parameter
+		// der resourceUrl sind der App egal. Jeder Eintrag MUSS beide Parameter tragen
+		// (guard reisst sonst die ganze Sektion ab).
 		$dir = dirname($row['path']);
 		$dir = $dir === '/' ? '/' : $dir . '/';
-		$link = $this->urlGenerator->getAbsoluteURL($this->filesBaseUrl())
-			. '?dir=' . rawurlencode($dir) . '&scrollto=' . rawurlencode($node->getName());
+		$link = $this->fileDeepLink((int)$row['file_id'])
+			. '?dir=' . rawurlencode($dir) . '&scrollto=' . rawurlencode($node->getName()) . '&openfile=true';
 		$searchResultEntry = new SearchResultEntry(
 			$thumbnailUrl,
 			$node->getName(),
@@ -93,18 +99,21 @@ class Provider implements IProvider {
 	}
 
 	/**
-	 * Basis-URL der Files-App — versionssicher fuer NC 33/34/35: die Route heisst
-	 * je nach Version 'files.View.index' (34) oder 'files.view.index' (33/35).
-	 * Als letzter Rettungsanker der stabile Pfad selbst.
+	 * Kanonischer Datei-Deep-Link '/f/<fileid>' — Route 'View#showFile' (root ''),
+	 * identisch in NC 33/34/35. Der Server leitet auf files.view.indexViewFileid
+	 * weiter (inkl. dir + openfile=true), die Datei oeffnet direkt im Viewer.
+	 * Je nach Version heisst die Route 'files.View.showFile' oder
+	 * 'files.view.showFile'; als letzter Rettungsanker der stabile Pfad selbst
+	 * ('/f/{fileid}' ist serverseitig hardcodiert).
 	 */
-	private function filesBaseUrl(): string {
-		foreach (['files.View.index', 'files.view.index'] as $route) {
+	private function fileDeepLink(int $fileId): string {
+		foreach (['files.View.showFile', 'files.view.showFile'] as $route) {
 			try {
-				return $this->urlGenerator->linkToRoute($route);
+				return $this->urlGenerator->getAbsoluteURL($this->urlGenerator->linkToRoute($route, ['fileid' => $fileId]));
 			} catch (\Throwable) {
 			}
 		}
-		return '/index.php/apps/files/';
+		return $this->urlGenerator->getAbsoluteURL('/index.php/f/' . $fileId);
 	}
 
 	/** @param array{file_id:int,name:string,path:string,text:string} $row */

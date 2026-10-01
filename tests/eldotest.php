@@ -74,10 +74,24 @@ try {
 		echo 'RAW: ' . mb_substr((string)json_encode($ser), 0, 1500) . "\n";
 	}
 	echo 'TREFFER: ' . count($entries) . "\n";
+	$fail = 0;
 	foreach ($entries as $e) {
-		$d = $e->jsonSerialize();
+		$d = is_array($e) ? $e : $e->jsonSerialize();
 		echo '- ' . $d['title'] . "\n   " . mb_substr((string)$d['subline'], 0, 140) . "\n";
+		// Vertrag-Check: resourceUrl = /f/<fileid>-Deep-Link (Browser oeffnet die
+		// Datei direkt) + Query dir+scrollto MUSS drin sein (iOS-35-Vertrag, guard!),
+		// und dir . scrollto === attributes.path.
+		$u = parse_url((string)$d['resourceUrl']);
+		parse_str((string)($u['query'] ?? ''), $q);
+		$path = (string)($d['attributes']['path'] ?? '');
+		$okDeep = (bool)preg_match('#/f/\d+$#', (string)($u['path'] ?? ''));
+		$okQuery = isset($q['dir'], $q['scrollto']) && ($q['dir'] . $q['scrollto']) === $path;
+		$fail += ($okDeep && $okQuery) ? 0 : 1;
+		echo '   [vertrag] deep-link=' . ($okDeep ? 'OK' : 'FAIL(' . ($u['path'] ?? '?') . ')')
+			. ' dir+scrollto==path=' . ($okQuery ? 'OK' : 'FAIL(' . ($q['dir'] ?? '?') . '+' . ($q['scrollto'] ?? '?') . ' != ' . $path . ')')
+			. "\n   " . (string)$d['resourceUrl'] . "\n";
 	}
+	echo ($fail === 0 ? 'VERTRAG: OK' : 'VERTRAG: ' . $fail . ' FEHLER') . "\n";
 } catch (\Throwable $e) {
 	echo "EX-SUCHE: " . get_class($e) . ": " . $e->getMessage() . " @ " . $e->getFile() . ":" . $e->getLine() . "\n";
 }

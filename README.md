@@ -50,6 +50,16 @@ configured scope and upserts extracted text into the `simplefulltextsearch_index
 are pruned on the next run. An incremental run touches only new or modified
 files. You can trigger a full reindex at any time in the admin settings.
 
+## Result links
+
+Each result entry links to the canonical Nextcloud file link
+`/f/{fileid}?dir=<parent-with-trailing-slash>&scrollto=<filename>&openfile=true`
+(plus `fileId`/`path` entry attributes). In the browser this opens the document
+**directly in the viewer** — not just its folder. Nextcloud iOS 35.0.0 reads
+only the `dir` and `scrollto` query parameters to resolve the file natively
+(both are mandatory on *every* entry — one entry without them drops the whole
+result section in the app); the URL path and extra parameters are ignored.
+
 ## Known issues
 
 **Nextcloud iOS 35.0.0** opens unified-search results natively only for the
