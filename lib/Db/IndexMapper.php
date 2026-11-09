@@ -39,8 +39,9 @@ class IndexMapper extends QBMapper {
 	/**
 	 * @param list<array{owner:string,folder:string}> $scopes
 	 */
-	public function search(array $scopes, string $term, int $limit): array {
-		$limit = max(1, min(100, $limit));
+	public function search(array $scopes, string $term, int $limit, int $offset = 0): array {
+		$limit = max(1, min(500, $limit));
+		$offset = max(0, $offset);
 		$boolean = $this->buildBoolean($term);
 		$rows = [];
 		if ($scopes === []) {
@@ -54,6 +55,9 @@ class IndexMapper extends QBMapper {
 					->where($this->scopeExpr($qb, $scopes))
 					->andWhere('MATCH(`name`, `text`) AGAINST (' . $qb->createNamedParameter($boolean) . ' IN BOOLEAN MODE)')
 					->setMaxResults($limit);
+				if ($offset > 0) {
+					$qb->setFirstResult($offset);
+				}
 				$rows = $qb->executeQuery()->fetchAll();
 			} catch (\Throwable) {
 				$rows = [];
@@ -69,6 +73,9 @@ class IndexMapper extends QBMapper {
 					$qb->expr()->iLike('text', $qb->createNamedParameter('%' . $this->escapeLike($term) . '%'))
 				))
 				->setMaxResults($limit);
+			if ($offset > 0) {
+				$qb->setFirstResult($offset);
+			}
 			$rows = $qb->executeQuery()->fetchAll();
 		}
 		return array_map(static function ($r): array {
@@ -79,6 +86,57 @@ class IndexMapper extends QBMapper {
 				'text' => (string)$r['text'],
 			];
 		}, $rows);
+	}
+
+	/**
+	 * Entfernt Index-Eintraege, deren Scope nicht mehr konfiguriert ist.
+	 *
+	 * @param list<array{owner:string,folder:string}> $activeScopes
+	 */
+	public function deleteOrphanedScopes(array $activeScopes): int {
+		if ($activeScopes === []) {
+			$qb = $this->db->getQueryBuilder();
+			$qb->delete($this->getTableName());
+			return (int)$qb->executeStatement();
+		}
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('id', 'owner', 'path')
+			->from($this->getTableName());
+		$rows = $qb->executeQuery()->fetchAll();
+
+		$staleIds = [];
+		foreach ($rows as $row) {
+			$matched = false;
+			foreach ($activeScopes as $scope) {
+				$prefix = $this->prefixOf($scope['folder']);
+				if ($row['owner'] === $scope['owner'] && str_starts_with((string)$row['path'], $prefix)) {
+					$matched = true;
+					break;
+				}
+			}
+			if (!$matched) {
+				$staleIds[] = (int)$row['id'];
+			}
+		}
+
+		$deleted = 0;
+		foreach (array_chunk($staleIds, 500) as $chunk) {
+			$delQb = $this->db->getQueryBuilder();
+			$delQb->delete($this->getTableName())
+				->where($delQb->expr()->in('id', $delQb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
+			$deleted += (int)$delQb->executeStatement();
+		}
+		return $deleted;
+	}
+
+	/**
+	 * Alias fuer deleteOrphanedScopes.
+	 *
+	 * @param list<array{owner:string,folder:string}> $activeScopes
+	 */
+	public function deleteMissingScopes(array $activeScopes): int {
+		return $this->deleteOrphanedScopes($activeScopes);
 	}
 
 	/**

@@ -51,25 +51,58 @@ class Provider implements IProvider {
 	public function search(IUser $user, ISearchQuery $query): SearchResult {
 		$term = $query->getTerm();
 		$scopes = IndexerService::scopesFromConfig($this->appConfig);
-		$rows = $scopes === [] ? [] : $this->mapper->search($scopes, $term, $query->getLimit());
 		$userFolder = $this->rootFolder->getUserFolder($user->getUID());
+		$targetLimit = $query->getLimit() > 0 ? $query->getLimit() : 20;
+
 		$entries = [];
-		foreach ($rows as $row) {
-			$node = $userFolder->getFirstNodeById($row['file_id']);
-			if (!$node instanceof Node) {
-				continue; // kein Zugriff fuer diese(n) Nutzer
+		$offset = 0;
+		$batchSize = max(50, min(100, $targetLimit * 2));
+		$maxRowsToCheck = 500;
+
+		// Starvation-Schutz: Mehr Zeilen aus der DB holen und erst NACH Rechtepruefung
+		// auf das gewuenschte Limit begrenzen, damit unberechtigte Scopes berechtigte
+		// Treffer nicht verdraengen.
+		while ($scopes !== [] && count($entries) < $targetLimit && $offset < $maxRowsToCheck) {
+			$rows = $this->mapper->search($scopes, $term, $batchSize, $offset);
+			if ($rows === []) {
+				break;
 			}
-			$entries[] = $this->buildEntry($node, $row, $term);
+			foreach ($rows as $row) {
+				$node = $userFolder->getFirstNodeById($row['file_id']);
+				// P1 Daten-Leck-Schutz: isReadable() vor jedem Ergebnis pruefen
+				if (!$node instanceof Node || !$node->isReadable()) {
+					continue; // kein Zugriff oder keine Leserechte (z. B. Drop-Only)
+				}
+				$entries[] = $this->buildEntry($node, $row, $term, $userFolder);
+				if (count($entries) >= $targetLimit) {
+					break;
+				}
+			}
+			if (count($rows) < $batchSize) {
+				break;
+			}
+			$offset += $batchSize;
 		}
+
 		return SearchResult::complete($this->l10n->t('Document search'), $entries);
 	}
 
 	/** @param array{file_id:int,name:string,path:string,text:string} $row */
-	private function buildEntry(Node $node, array $row, string $term): SearchResultEntry {
+	private function buildEntry(Node $node, array $row, string $term, Node $userFolder): SearchResultEntry {
 		$mime = $node->getMimetype();
 		$thumbnailUrl = $this->previewManager->isMimeSupported($mime)
 			? $this->urlGenerator->linkToRouteAbsolute('core.Preview.getPreviewByFileId', ['x' => 32, 'y' => 32, 'fileId' => $row['file_id']])
 			: '';
+
+		// P1 Pfad-Leck-Schutz: Pfad aus Sicht des Suchenden berechnen ($userFolder),
+		// NIEMALS den internen Scope-Eigentuemer-Pfad ($row['path']) verwenden.
+		$relPath = $userFolder instanceof \OCP\Files\Folder ? $userFolder->getRelativePath($node->getPath()) : null;
+		if ($relPath === null || $relPath === '') {
+			$userPath = '/' . $node->getName();
+		} else {
+			$userPath = '/' . ltrim($relPath, '/');
+		}
+
 		// Deep-Link '/f/<fileid>' = kanonischer Datei-Link ("interne Verknuepfung",
 		// Route files.View.showFile): der Server leitet auf die Files-Ansicht weiter
 		// und oeffnet die Datei DIREKT im Viewer (redirectToFile setzt openfile=true).
@@ -80,21 +113,21 @@ class Provider implements IProvider {
 		// beide zum DAV-Pfad und oeffnet nativ — Pfad und zusaetzliche Query-Parameter
 		// der resourceUrl sind der App egal. Jeder Eintrag MUSS beide Parameter tragen
 		// (guard reisst sonst die ganze Sektion ab).
-		$dir = dirname($row['path']);
+		$dir = dirname($userPath);
 		$dir = $dir === '/' ? '/' : $dir . '/';
 		$link = $this->fileDeepLink((int)$row['file_id'])
 			. '?dir=' . rawurlencode($dir) . '&scrollto=' . rawurlencode($node->getName()) . '&openfile=true';
 		$searchResultEntry = new SearchResultEntry(
 			$thumbnailUrl,
 			$node->getName(),
-			$this->snippet($row, $term),
+			$this->snippet($row, $term, $userPath),
 			$link,
 			$this->mimeTypeDetector->mimeTypeIcon($mime),
 		);
 		// Apps oeffnen Datei-Treffer NUR nativ, wenn fileId+path als Attribute haengen
 		// (Bauplan 1:1 von FilesSearchProvider uebernommen).
 		$searchResultEntry->addAttribute('fileId', (string)$row['file_id']);
-		$searchResultEntry->addAttribute('path', $row['path']);
+		$searchResultEntry->addAttribute('path', $userPath);
 		return $searchResultEntry;
 	}
 
@@ -117,7 +150,7 @@ class Provider implements IProvider {
 	}
 
 	/** @param array{file_id:int,name:string,path:string,text:string} $row */
-	private function snippet(array $row, string $term): string {
+	private function snippet(array $row, string $term, string $userPath): string {
 		$text = $row['text'];
 		$pos = -1;
 		foreach (preg_split('/\s+/u', $term) ?: [] as $w) {
@@ -134,6 +167,6 @@ class Provider implements IProvider {
 		}
 		$start = max(0, $pos - 50);
 		$snip = mb_substr($text, $start, 140);
-		return ($start > 0 ? '…' : '') . $snip . (mb_strlen($text) > $start + 140 ? '…' : '') . ' · ' . $row['path'];
+		return ($start > 0 ? '…' : '') . $snip . (mb_strlen($text) > $start + 140 ? '…' : '') . ' · ' . $userPath;
 	}
 }
