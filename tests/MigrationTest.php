@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\SimpleFullTextFileSearch\Tests;
 
 use OCA\SimpleFullTextFileSearch\Migration\Version2ScopeMigration;
+use OCA\SimpleFullTextFileSearch\Migration\Version3RenameMigration;
 use OCP\DB\ISchemaWrapper;
 use OCP\IAppConfig;
 use OCP\IDBConnection;
@@ -13,9 +14,50 @@ use PHPUnit\Framework\TestCase;
 
 class MigrationTest extends TestCase {
 	/**
-	 * P1: Rename-Migration:
+	 * Version 2: Multi-Scope Schema-Migration.
+	 * Tauscht den Unique-Index von file_id auf (file_id, owner).
+	 */
+	public function testVersion2ScopeMigrationChangesSchema(): void {
+		$output = $this->createStub(IOutput::class);
+		$schema = $this->createStub(ISchemaWrapper::class);
+
+		$table = new class {
+			public array $droppedIndices = [];
+			public array $addedIndices = [];
+
+			public function hasIndex(string $name): bool {
+				return $name === 'simplefulltextsearch_file_idx';
+			}
+
+			public function dropIndex(string $name): void {
+				$this->droppedIndices[] = $name;
+			}
+
+			public function addUniqueIndex(array $columns, string $name): void {
+				$this->addedIndices[$name] = $columns;
+			}
+		};
+
+		$schema->method('hasTable')->willReturnCallback(static fn (string $table) => $table === 'simplefulltextsearch_index');
+		$schema->method('getTable')->willReturn($table);
+
+		$migration = new Version2ScopeMigration();
+		$result = $migration->changeSchema($output, static fn () => $schema, []);
+
+		$this->assertSame($schema, $result);
+		$this->assertContains('simplefulltextsearch_file_idx', $table->droppedIndices);
+		$this->assertSame(['file_id', 'owner'], $table->addedIndices['simplefulltextsearch_file_uix'] ?? null);
+
+		// Fall: Tabelle existiert noch nicht
+		$schemaWithoutTable = $this->createStub(ISchemaWrapper::class);
+		$schemaWithoutTable->method('hasTable')->willReturn(false);
+		$this->assertNull($migration->changeSchema($output, static fn () => $schemaWithoutTable, []));
+	}
+
+	/**
+	 * Version 3: Rename-Migration:
 	 * Daten aus oc_dossier_index landen in oc_simplefulltextsearch_index.
-	 * Die Alt-Tabelle wird NIE geloescht oder geleert.
+	 * Die Alt-Tabelle wird NIE geloescht oder geleert (idempotent & nicht-destruktiv).
 	 */
 	public function testRenameMigrationCopiesData(): void {
 		$connection = $this->createMock(IDBConnection::class);
@@ -34,7 +76,7 @@ class MigrationTest extends TestCase {
 				return 15; // 15 Datensaetze kopiert
 			});
 
-		$migration = new Version2ScopeMigration($connection, $appConfig);
+		$migration = new Version3RenameMigration($connection, $appConfig);
 		$migration->postSchemaChange($output, static fn () => $schema, []);
 
 		// Pruefen, dass die Datenuebernahme korrekt und idempotent erfolgte
@@ -46,7 +88,7 @@ class MigrationTest extends TestCase {
 	}
 
 	/**
-	 * P1: Config-Migration:
+	 * Version 3: Config-Migration:
 	 * App-Config dossier (scopes, scope_owner, ...) wird nach simplefulltextsearch migriert.
 	 */
 	public function testConfigMigration(): void {
@@ -78,7 +120,7 @@ class MigrationTest extends TestCase {
 				$configStore[$app][$key] = $val;
 			});
 
-		$migration = new Version2ScopeMigration($connection, $appConfig);
+		$migration = new Version3RenameMigration($connection, $appConfig);
 		$migration->postSchemaChange($output, static fn () => $schema, []);
 
 		$this->assertArrayHasKey('simplefulltextsearch', $savedValues);
