@@ -6,6 +6,15 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/) 
 
 ---
 
+## [1.1.1] - 2026-11-09
+
+### Behoben
+- **Migration 2/3-Kollision behoben (Rename-Migration auf bestehenden Systemen):**
+  - **Ursache:** In Version 1.1.0 wurde die Rename-Logik (Kopieren von `oc_dossier_index` nach `simplefulltextsearch_index` sowie Migration der App-Konfigurationen von `dossier` nach `simplefulltextsearch`) fälschlicherweise in die bereits existierende `Version2ScopeMigration.php` integriert. Da `2ScopeMigration` auf bereits installierten Systemen (1.0.0) in der Nextcloud-Tabelle `oc_migrations` bereits als ausgeführt markiert war, wurde die erweiterte Migration bei Updates nie ausgeführt.
+  - **Wirkung & Fix:** Die Rename-Logik wurde aus `Version2ScopeMigration.php` vollständig entfernt (wieder auf den reinen Scope-Index-Umbau zurückgesetzt) und in eine neue Schema-Migration `lib/Migration/Version3RenameMigration.php` überführt. Nextcloud führt `Version3RenameMigration` nun beim App-Update auf 1.1.1 garantiert und idempotent aus, ohne dass Altdaten gelöscht werden.
+
+---
+
 ## [1.1.0] - 2026-11-09
 
 ### Behobene Review-Funde & Sicherheits-Härtung (Fixwave)
