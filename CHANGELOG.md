@@ -4,6 +4,11 @@ Alle relevanten Änderungen an der Nextcloud-App **SimpleFullTextFileSearch** we
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/) und dieses Projekt befolgt [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-11-09
+
+### Geändert
+- Metadata-Rename (User-Vorgabe): Autor = pcBensn (vorher „NikolAI"). Keine funktionalen Änderungen.
+
 ---
 
 ## [1.1.1] - 2026-11-09
