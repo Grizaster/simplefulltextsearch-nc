@@ -5,13 +5,14 @@
   <name>SimpleFullTextFileSearch</name>
   <summary>Volltextsuche ueber einen gewaehlten Dokumente-Ordner</summary>
   <description><![CDATA[Ordner-scoped Volltextsuche (wie Eldoar, nativ in Nextcloud): indexiert nur den in den Admin-Einstellungen gewaehlten Ordner inkl. PDF-/Office-Inhalt und OCR-Text gescannter Dokumente. Treffer erscheinen direkt in der Nextcloud-Suchleiste.]]></description>
-  <version>1.0.0</version>
+  <version>1.1.0</version>
   <licence>agpl</licence>
   <author>NikolAI</author>
   <namespace>SimpleFullTextFileSearch</namespace>
   <category>tools</category>
   <dependencies>
     <nextcloud min-version="33" max-version="35"/>
+    <database>mysql</database>
   </dependencies>
   <settings>
     <admin>OCA\SimpleFullTextFileSearch\Settings\AdminSettings</admin>
