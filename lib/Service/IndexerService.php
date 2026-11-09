@@ -47,6 +47,24 @@ class IndexerService {
 				$scopes[] = ['owner' => $owner, 'folder' => self::normalizeFolder($appConfig->getValueString(self::APP_ID, 'scope_folder', '/Documents'))];
 			}
 		}
+		// Fallback auf Alt-Config dossier
+		if ($scopes === []) {
+			$rawLegacy = $appConfig->getValueString('dossier', 'scopes', '');
+			if ($rawLegacy !== '') {
+				$decoded = json_decode($rawLegacy, true);
+				foreach ((is_array($decoded) ? $decoded : []) as $s) {
+					if (is_array($s) && trim((string)($s['owner'] ?? '')) !== '' && trim((string)($s['folder'] ?? '')) !== '') {
+						$scopes[] = ['owner' => trim((string)$s['owner']), 'folder' => self::normalizeFolder((string)$s['folder'])];
+					}
+				}
+			}
+			if ($scopes === []) {
+				$owner = $appConfig->getValueString('dossier', 'scope_owner', '');
+				if ($owner !== '') {
+					$scopes[] = ['owner' => $owner, 'folder' => self::normalizeFolder($appConfig->getValueString('dossier', 'scope_folder', '/Documents'))];
+				}
+			}
+		}
 		return $scopes;
 	}
 
@@ -56,8 +74,9 @@ class IndexerService {
 
 	/** Alle konfigurierten Suchbereiche indizieren. */
 	public function indexAll(): array {
+		$scopes = self::scopesFromConfig($this->appConfig);
 		$totals = ['indexed' => 0, 'skipped' => 0, 'removed' => 0, 'unchanged' => 0, 'scopes' => 0, 'errors' => []];
-		foreach (self::scopesFromConfig($this->appConfig) as $scope) {
+		foreach ($scopes as $scope) {
 			$stats = $this->indexUser($scope['owner'], $scope['folder']);
 			$totals['scopes']++;
 			foreach (['indexed', 'skipped', 'removed', 'unchanged'] as $k) {
@@ -67,6 +86,8 @@ class IndexerService {
 				$totals['errors'][] = $stats['owner'] . ' ' . $stats['folder'] . ': ' . $stats['error'];
 			}
 		}
+		$orphansRemoved = $this->mapper->deleteOrphanedScopes($scopes);
+		$totals['removed'] += $orphansRemoved;
 		return $totals;
 	}
 
@@ -129,7 +150,21 @@ class IndexerService {
 			}
 			try {
 				$local = $node->getStorage()->getLocalFile($node->getInternalPath());
-				$text = $local !== false ? $this->extractor->extract($local, $node->getName()) : '';
+				if ($local === false) {
+					$this->logger->warning('simplefulltextsearch: Kein lokaler Dateipfad fuer {path} verfuegbar (S3/Object Storage ohne lokalen Cache)', [
+						'path' => $node->getPath(),
+						'file' => $node->getName(),
+					]);
+					$text = '';
+				} else {
+					$text = $this->extractor->extract($local, $node->getName());
+					if ($text === '') {
+						$this->logger->warning('simplefulltextsearch: Extraktion lieferte leeren Text fuer {path}', [
+							'path' => $node->getPath(),
+							'file' => $node->getName(),
+						]);
+					}
+				}
 			} catch (\Throwable $e) {
 				$this->logger->warning('simplefulltextsearch: Extraktion fehlgeschlagen für {f}: {e}', ['f' => $node->getName(), 'e' => $e->getMessage()]);
 				$text = '';
@@ -137,7 +172,8 @@ class IndexerService {
 			$entry = $existing ?? new IndexEntry();
 			$entry->setFileId($fileId);
 			$entry->setOwner($owner);
-			$entry->setPath($userFolder->getRelativePath($node->getPath()) ?? $node->getName());
+			$relPath = $userFolder->getRelativePath($node->getPath());
+			$entry->setPath($relPath !== null && $relPath !== '' ? '/' . ltrim($relPath, '/') : '/' . $node->getName());
 			$entry->setName($node->getName());
 			$entry->setMtime($mtime);
 			$entry->setSize($size);
