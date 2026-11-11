@@ -11,7 +11,7 @@ use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\BackgroundJob\IJobList;
-use OCP\Group\IGroupManager;
+use OCP\IGroupManager;
 use OCP\IAppConfig;
 use OCP\IRequest;
 use OCP\IUserManager;
