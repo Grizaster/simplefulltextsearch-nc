@@ -4,6 +4,17 @@ Alle relevanten Änderungen an der Nextcloud-App **SimpleFullTextFileSearch** we
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/) und dieses Projekt befolgt [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-11-11
+
+### Hinzugefügt
+- **App-Icon:** monochrome Glyphe (Ordner mit integriertem Reiter, Dokument mit hervorgehobener Fundstelle, Lupe) auf transparentem Grund in `img/app.svg`/`img/app-dark.svg` für die Apps-Verwaltung; farbige Kachel in `appinfo/icon.svg`/`icon-dark.svg` für den App Store.
+- **Store-Screenshots:** Einstellungs-Seite und Volltext-Treffer mit Textausschnitt aus einem PDF (`screenshots/`).
+- **AI-Transparenz:** README-Badge und Abschnitt „AI disclosure" zur Offenlegung der AI-gestützten Entwicklung.
+
+### Behoben
+- **Leere Aktions-URLs in den Einstellungen:** `linkToRoute` wurde mit Raute-Schreibweise aufgerufen statt in Punkt-Notation — dadurch renderten `data-save-url`/`data-reindex-url` leer und „Speichern"/„Jetzt neu indizieren" scheiterten mit einem JSON-Parse-Fehler (`lib/Settings/AdminSettings.php`).
+- **HTTP 500 bei jedem Controller-Aufruf:** Der Gruppenmanager wurde als `OCP\Group\IGroupManager` injiziert — diese Schnittstelle existiert nicht (korrekt: `OCP\IGroupManager`); die Dependency-Injection löste die Klasse nicht auf (`lib/Controller/SettingsController.php`).
+
 ## [1.2.0] - 2026-11-11
 
 ### Sicherheits-Härtung (Release-Welle für den Nextcloud App Store)
