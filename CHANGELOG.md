@@ -4,7 +4,7 @@ Alle relevanten Änderungen an der Nextcloud-App **SimpleFullTextFileSearch** we
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/) und dieses Projekt befolgt [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.3.0] - 2026-11-11
+## 1.3.0 - 2026-11-11
 
 ### Hinzugefügt
 - **App-Icon:** monochrome Glyphe (Ordner mit integriertem Reiter, Dokument mit hervorgehobener Fundstelle, Lupe) auf transparentem Grund in `img/app.svg`/`img/app-dark.svg` für die Apps-Verwaltung; farbige Kachel in `appinfo/icon.svg`/`icon-dark.svg` für den App Store.
@@ -15,7 +15,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/) 
 - **Leere Aktions-URLs in den Einstellungen:** `linkToRoute` wurde mit Raute-Schreibweise aufgerufen statt in Punkt-Notation — dadurch renderten `data-save-url`/`data-reindex-url` leer und „Speichern"/„Jetzt neu indizieren" scheiterten mit einem JSON-Parse-Fehler (`lib/Settings/AdminSettings.php`).
 - **HTTP 500 bei jedem Controller-Aufruf:** Der Gruppenmanager wurde als `OCP\Group\IGroupManager` injiziert — diese Schnittstelle existiert nicht (korrekt: `OCP\IGroupManager`); die Dependency-Injection löste die Klasse nicht auf (`lib/Controller/SettingsController.php`).
 
-## [1.2.0] - 2026-11-11
+## 1.2.0 - 2026-11-11
 
 ### Sicherheits-Härtung (Release-Welle für den Nextcloud App Store)
 
@@ -46,14 +46,14 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/) 
 
 ---
 
-## [1.1.2] - 2026-11-09
+## 1.1.2 - 2026-11-09
 
 ### Geändert
 - Metadata-Rename (User-Vorgabe): Autor = pcBensn (vorher „NikolAI"). Keine funktionalen Änderungen.
 
 ---
 
-## [1.1.1] - 2026-11-09
+## 1.1.1 - 2026-11-09
 
 ### Behoben
 - **Migration 2/3-Kollision behoben (Rename-Migration auf bestehenden Systemen):**
@@ -62,7 +62,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/) 
 
 ---
 
-## [1.1.0] - 2026-11-09
+## 1.1.0 - 2026-11-09
 
 ### Behobene Review-Funde & Sicherheits-Härtung (Fixwave)
 
@@ -86,6 +86,6 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/) 
 
 ---
 
-## [1.0.0] - 2026-09-30
+## 1.0.0 - 2026-09-30
 
 - Initiales Release von SimpleFullTextFileSearch (Multi-Scope, MariaDB FULLTEXT, OCR-Pipeline).

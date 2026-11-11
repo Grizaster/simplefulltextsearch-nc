@@ -40,7 +40,9 @@ Details und Setup siehe README. Technischer Name: SimpleFullTextFileSearch.
   <category>tools</category>
   <website>https://pcbensn.de</website>
   <bugs>https://github.com/Grizaster/simplefulltextsearch-nc/issues</bugs>
-  <repository type="git">https://github.com/Grizaster/simplefulltextsearch-nc</repository>
+  <repository>https://github.com/Grizaster/simplefulltextsearch-nc</repository>
+  <screenshot>https://raw.githubusercontent.com/Grizaster/simplefulltextsearch-nc/main/screenshots/screenshot1-settings-de.png</screenshot>
+  <screenshot>https://raw.githubusercontent.com/Grizaster/simplefulltextsearch-nc/main/screenshots/screenshot2-search-de.png</screenshot>
   <dependencies>
     <php min-version="8.1"/>
     <database>mysql</database>
