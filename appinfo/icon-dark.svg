@@ -27,4 +27,15 @@
   <rect x="42" y="73" width="34" height="5.5" rx="2.75" fill="#7fbf7f"/>
   <!-- Textzeile 4 -->
   <rect x="42" y="83" width="22" height="5.5" rx="2.75" fill="#7fbf7f"/>
+  <!-- Lupe: Negativraum-Halo (gruene Konturtrennung zum Hintergrund) -->
+  <line x1="87.71" y1="85.71" x2="104.89" y2="102.89" stroke="#7fbf7f" stroke-width="9.90" stroke-linecap="round"/>
+  <circle cx="80.00" cy="78.00" r="16.20" fill="#7fbf7f"/>
+  <!-- Lupe: Griff (schlankes Staebchen im 45-Grad-Winkel nach unten rechts) -->
+  <line x1="87.71" y1="85.71" x2="102.63" y2="100.63" stroke="#ffffff" stroke-width="3.50" stroke-linecap="round"/>
+  <!-- Lupe: Ring (schlanker Aussenring) -->
+  <circle cx="80.00" cy="78.00" r="13.00" fill="#ffffff"/>
+  <!-- Lupe: Linse (gruener durchscheinender Negativraum) -->
+  <circle cx="80.00" cy="78.00" r="8.80" fill="#7fbf7f"/>
+  <!-- Lupe: Glas-Reflexion (bogenfoermiges Glanzlicht, zerstoert Q-Wirkung) -->
+  <path d="M 73.61 75.67 A 6.80 6.80 0 0 1 77.67 71.61" stroke="#ffffff" stroke-width="2.00" stroke-linecap="round" fill="none"/>
 </svg>
