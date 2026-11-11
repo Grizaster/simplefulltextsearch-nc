@@ -7,7 +7,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/) 
 ## 1.3.0 - 2026-11-11
 
 ### Hinzugefügt
-- **App-Icon:** monochrome Glyphe (Ordner mit integriertem Reiter, Dokument mit hervorgehobener Fundstelle, Lupe) auf transparentem Grund in `img/app.svg`/`img/app-dark.svg` für die Apps-Verwaltung; farbige Kachel in `appinfo/icon.svg`/`icon-dark.svg` für den App Store.
+- **App-Icon:** monochrome Glyphe (Ordner mit integriertem Reiter, Dokument mit hervorgehobener Fundstelle, Lupe) auf **transparentem** Grund — dunkle Glyphe für helle Themes (`img/app.svg`, `appinfo/icon.svg`), weiße Glyphe für dunkle (`img/app-dark.svg`, `appinfo/icon-dark.svg`).
 - **Store-Screenshots:** Einstellungs-Seite und Volltext-Treffer mit Textausschnitt aus einem PDF (`screenshots/`).
 - **AI-Transparenz:** README-Badge und Abschnitt „AI disclosure" zur Offenlegung der AI-gestützten Entwicklung.
 

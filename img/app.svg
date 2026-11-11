@@ -43,5 +43,5 @@
       <path d="M 73.61 75.67 A 6.80 6.80 0 0 1 77.67 71.61" stroke="#fff" stroke-width="2.00" stroke-linecap="round" fill="none"/>
     </mask>
   </defs>
-  <rect width="128" height="128" fill="#fff" mask="url(#app-icon-mask)"/>
+  <rect width="128" height="128" fill="#000" mask="url(#app-icon-mask)"/>
 </svg>
