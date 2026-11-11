@@ -9,8 +9,6 @@
     <testsuites>
         <testsuite name="SimpleFullTextFileSearch Test Suite">
             <directory>tests</directory>
-            <exclude>tests/eldotest.php</exclude>
-            <exclude>tests/eldoprobe.php</exclude>
         </testsuite>
     </testsuites>
 </phpunit>

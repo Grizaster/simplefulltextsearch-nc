@@ -77,10 +77,16 @@ them regardless of the configured provider id).
 
 ## Development
 
-- `tests/eldotest.php` — end-to-end CLI test (index + provider search)
+- Test suite: PHPUnit (`phpunit`), bootstrap is self-contained — no Nextcloud
+  installation needed
 - App id / namespace: `simplefulltextsearch` / `OCA\SimpleFullTextFileSearch`
 - The search provider id is configurable (`provider_id`, default
   `simplefulltextsearch`)
+
+## Privacy
+
+All indexing runs on your own server. No data ever leaves your Nextcloud — no
+external services, no cloud, no telemetry.
 
 ## License
 

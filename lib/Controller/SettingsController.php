@@ -16,27 +16,40 @@ use OCP\IUserManager;
 use OCP\IUserSession;
 
 class SettingsController extends Controller {
+	/**
+	 * Admin-Absicherung = DOPPELT und FAIL-CLOSED:
+	 * 1) Nextclouds SecurityMiddleware verlangt fuer Controller-Methoden ohne
+	 *    #[NoAdminRequired] standardmaessig Admin (NotAdminException) — siehe
+	 *    lib/private/AppFramework/Middleware/Security/SecurityMiddleware.php.
+	 * 2) Die eigene Pruefung unten ist der Belt (Defense in Depth) und laeuft
+	 *    IMMER, weil $groupManager/$userSession zwingend per DI gesetzt sind
+	 *    (bewusst KEINE Nullable-Defaults — sonst wuerde die Pruefung still
+	 *    entfallen, sobald der Container nichts liefert = Fail-Open).
+	 * Ein eigenes #[AdminRequired]-Attribut wird bewusst NICHT gefuehrt: es hat
+	 * bei Nextcloud keine Wirkung und erzeugt einen falschen Sicherheitseindruck.
+	 */
 	public function __construct(
 		IRequest $request,
 		private IAppConfig $appConfig,
 		private IndexerService $indexer,
 		private IUserManager $userManager,
-		private ?IGroupManager $groupManager = null,
-		private ?IUserSession $userSession = null,
+		private IGroupManager $groupManager,
+		private IUserSession $userSession,
 	) {
 		parent::__construct(Application::APP_ID, $request);
 	}
 
-	/**
-	 * @AdminRequired
-	 */
-	#[AdminRequired]
+	private function requireAdmin(): ?JSONResponse {
+		$user = $this->userSession->getUser();
+		if ($user === null || !$this->groupManager->isAdmin($user->getUID())) {
+			return new JSONResponse(['status' => 'error', 'message' => 'Admin permissions required'], Http::STATUS_FORBIDDEN);
+		}
+		return null;
+	}
+
 	public function save(string $scopes = '[]'): JSONResponse {
-		if ($this->userSession !== null && $this->groupManager !== null) {
-			$user = $this->userSession->getUser();
-			if ($user === null || !$this->groupManager->isAdmin($user->getUID())) {
-				return new JSONResponse(['status' => 'error', 'message' => 'Admin permissions required'], Http::STATUS_FORBIDDEN);
-			}
+		if ($denied = $this->requireAdmin()) {
+			return $denied;
 		}
 
 		$parsed = [];
@@ -62,16 +75,9 @@ class SettingsController extends Controller {
 		return new JSONResponse(['status' => 'ok', 'scopes' => $parsed]);
 	}
 
-	/**
-	 * @AdminRequired
-	 */
-	#[AdminRequired]
 	public function reindex(): JSONResponse {
-		if ($this->userSession !== null && $this->groupManager !== null) {
-			$user = $this->userSession->getUser();
-			if ($user === null || !$this->groupManager->isAdmin($user->getUID())) {
-				return new JSONResponse(['status' => 'error', 'message' => 'Admin permissions required'], Http::STATUS_FORBIDDEN);
-			}
+		if ($denied = $this->requireAdmin()) {
+			return $denied;
 		}
 
 		return new JSONResponse(['status' => 'ok', 'stats' => $this->indexer->indexAll()]);

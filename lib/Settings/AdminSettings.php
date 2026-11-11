@@ -38,6 +38,22 @@ class AdminSettings implements ISettings {
 			'users' => $this->userIds(),
 			'saveUrl' => $this->urlGenerator->linkToRoute('simplefulltextsearch.settings#save'),
 			'reindexUrl' => $this->urlGenerator->linkToRoute('simplefulltextsearch.settings#reindex'),
+			'scopesLabel' => $this->l10n->t('Search scopes — each entry is a folder that is searched in full'),
+			'ownerEmptyLabel' => $this->l10n->t('— Select user —'),
+			'notExistingLabel' => $this->l10n->t('(no longer available)'),
+			'folderPlaceholder' => $this->l10n->t('Folder, e.g. /Documents'),
+			'addLabel' => $this->l10n->t('+ Add search scope'),
+			'saveLabel' => $this->l10n->t('Save'),
+			'reindexLabel' => $this->l10n->t('Reindex now'),
+			// JS-Texte serverseitig uebersetzt ueber data-strings uebergeben
+			// (kein l10n-JS-Pipeline noetig, funktioniert in jeder NC-Version).
+			'jsStrings' => [
+				'saving' => $this->l10n->t('Saving …'),
+				'saved' => $this->l10n->t('Saved: {n} search scope(s)'),
+				'error' => $this->l10n->t('Error: '),
+				'indexing' => $this->l10n->t('Indexing … (this may take a while for many documents)'),
+				'done' => $this->l10n->t('Done ({scopes} scopes): {indexed} new/updated, {unchanged} unchanged, {removed} removed'),
+			],
 		]);
 	}
 

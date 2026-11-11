@@ -151,7 +151,10 @@ class Provider implements IProvider {
 
 	/** @param array{file_id:int,name:string,path:string,text:string} $row */
 	private function snippet(array $row, string $term, string $userPath): string {
-		$text = $row['text'];
+		// Defense in Depth: Dokumenttext kann Markup enthalten (Hochladen durch
+		// Nutzer) — nie als moegliches HTML in Konsumierende (Apps, Drittanbieter)
+		// geben, auch wenn das Web-UI escaped.
+		$text = trim(preg_replace('/\s+/u', ' ', strip_tags($row['text'])) ?? '');
 		$pos = -1;
 		foreach (preg_split('/\s+/u', $term) ?: [] as $w) {
 			if (mb_strlen($w) < 2) {

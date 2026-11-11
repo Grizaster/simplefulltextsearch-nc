@@ -11,8 +11,9 @@ use Psr\Log\LoggerInterface;
  * (OCR fuer Scans), unzip fuer docx/odt, Klaertext direkt.
  */
 class ExtractorService {
-	private const MAX_BYTES = 26214400; // 25 MB
+	public const MAX_BYTES = 26214400; // 25 MB
 	private const MAX_CHARS = 400000;   // Index-Budget je Dokument
+	private const MAX_OUT = 2097152;    // 2 MB Deckel fuer Konsolen-Ausgabe (Zip-Bomben/Textmassen)
 
 	public function __construct(
 		private ?LoggerInterface $logger = null,
@@ -27,9 +28,9 @@ class ExtractorService {
 		$text = match (true) {
 			$ext === 'pdf' => $this->fromPdf($localPath),
 			in_array($ext, ['txt', 'md', 'markdown', 'csv', 'json', 'log', 'xml', 'yaml', 'yml'], true)
-				=> (string)@file_get_contents($localPath),
+				=> $this->readCapped($localPath, self::MAX_CHARS * 4),
 			in_array($ext, ['html', 'htm'], true)
-				=> html_entity_decode(strip_tags((string)@file_get_contents($localPath)), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+				=> html_entity_decode(strip_tags($this->readCapped($localPath, self::MAX_CHARS * 4)), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
 			$ext === 'docx' => $this->fromZip($localPath, 'word/document.xml'),
 			$ext === 'odt' => $this->fromZip($localPath, 'content.xml'),
 			default => '',
@@ -50,7 +51,7 @@ class ExtractorService {
 		$outPdf = tempnam(sys_get_temp_dir(), 'elds_o_');
 		try {
 			$t = $this->sh(['ocrmypdf', '--skip-text', '--quiet', '--sidecar', $sidecar, $p, $outPdf]);
-			$side = ($sidecar !== false && is_file($sidecar)) ? (string)@file_get_contents($sidecar) : '';
+			$side = $this->readCapped($sidecar, self::MAX_CHARS * 4);
 			return $side !== '' ? $side : $t;
 		} finally {
 			if ($sidecar !== false && is_file($sidecar)) {
@@ -73,14 +74,16 @@ class ExtractorService {
 	/** @param list<string> $args */
 	private function sh(array $args): string {
 		$errFile = tempnam(sys_get_temp_dir(), 'elds_err_');
+		$outFile = tempnam(sys_get_temp_dir(), 'elds_out_');
 		try {
 			$errArg = $errFile !== false ? ' 2>' . escapeshellarg($errFile) : ' 2>/dev/null';
-			$cmd = 'timeout 120 ' . implode(' ', array_map('escapeshellarg', $args)) . $errArg;
-			$out = [];
+			$outArg = $outFile !== false ? ' 1>' . escapeshellarg($outFile) : ' 1>/dev/null';
+			$cmd = 'timeout 120 ' . implode(' ', array_map('escapeshellarg', $args)) . $outArg . $errArg;
 			$rc = 0;
-			exec($cmd, $out, $rc);
+			$ignore = [];
+			exec($cmd, $ignore, $rc);
 			if ($rc !== 0) {
-				$err = ($errFile !== false && is_file($errFile)) ? trim((string)@file_get_contents($errFile)) : '';
+				$err = $this->readCapped($errFile, 4096);
 				$this->logger?->warning('simplefulltextsearch: Extractor CLI-Fehler bei {cmd}: Exit-Code {rc}, Fehler: {err}', [
 					'cmd' => $args[0] ?? '',
 					'rc' => $rc,
@@ -88,11 +91,21 @@ class ExtractorService {
 				]);
 				return '';
 			}
-			return implode("\n", $out);
+			return $this->readCapped($outFile, self::MAX_OUT);
 		} finally {
-			if ($errFile !== false && is_file($errFile)) {
-				@unlink($errFile);
+			foreach ([$errFile, $outFile] as $f) {
+				if ($f !== false && is_file($f)) {
+					@unlink($f);
+				}
 			}
 		}
+	}
+
+	/** Begrenzter Datei-Read (nie ungebunden in den Speicher, auch nicht bei Bomben). */
+	private function readCapped(string|false $path, int $max): string {
+		if ($path === false || !is_file($path)) {
+			return '';
+		}
+		return (string)@file_get_contents($path, false, null, 0, $max);
 	}
 }

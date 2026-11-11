@@ -69,7 +69,21 @@ class IndexerService {
 	}
 
 	public static function normalizeFolder(string $folder): string {
-		return '/' . trim($folder, "/ \t\n\r\0\x0B");
+		$folder = str_replace('\\', '/', $folder);
+		$parts = [];
+		foreach (explode('/', $folder) as $seg) {
+			$seg = trim($seg);
+			if ($seg === '' || $seg === '.') {
+				continue;
+			}
+			if ($seg === '..') {
+				// Traversierung ist in Suchbereichen nie erlaubt: auf Root abbilden,
+				// save() verwirft '/' dann als ungueltigen Bereich.
+				return '/';
+			}
+			$parts[] = $seg;
+		}
+		return '/' . implode('/', $parts);
 	}
 
 	/** Alle konfigurierten Suchbereiche indizieren. */
@@ -138,7 +152,7 @@ class IndexerService {
 			}
 			$mtime = $node->getMTime();
 			$size = $node->getSize();
-			if ($size > 26214400) {
+			if ($size > ExtractorService::MAX_BYTES) {
 				$stats['skipped']++;
 				continue;
 			}

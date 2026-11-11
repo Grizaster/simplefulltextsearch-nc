@@ -5,6 +5,15 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 	const status = document.getElementById('simplefulltextsearch-status');
 	const list = document.getElementById('simplefulltextsearch-scopes');
+	// Serverseitig uebersetzte Texte (l10n) — siehe AdminSettings::getForm().
+	const S = JSON.parse(form.dataset.strings || '{}');
+	const t = (key, fallback, vars) => {
+		let s = S[key] || fallback;
+		for (const [k, v] of Object.entries(vars || {})) {
+			s = s.replace('{' + k + '}', v);
+		}
+		return s;
+	};
 	const headers = () => ({
 		'Content-Type': 'application/json',
 		requesttoken: document.head.getAttribute('data-requesttoken'),
@@ -43,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	document.getElementById('simplefulltextsearch-save').addEventListener('click', async (ev) => {
 		ev.preventDefault();
 		const scopes = collect();
-		status.textContent = 'Speichere …';
+		status.textContent = t('saving', 'Saving …');
 		try {
 			const r = await fetch(form.dataset.saveUrl, {
 				method: 'POST',
@@ -52,30 +61,32 @@ document.addEventListener('DOMContentLoaded', () => {
 			});
 			const j = await r.json();
 			status.textContent = j.status === 'ok'
-				? 'Gespeichert: ' + j.scopes.length + ' Suchbereich(e)'
-				: 'Fehler: ' + (j.message || r.statusText);
+				? t('saved', 'Saved: {n} search scope(s)', { n: j.scopes.length })
+				: t('error', 'Error: ') + (j.message || r.statusText);
 		} catch (e) {
-			status.textContent = 'Fehler: ' + e;
+			status.textContent = t('error', 'Error: ') + e;
 		}
 	});
 
 	document.getElementById('simplefulltextsearch-reindex').addEventListener('click', async (ev) => {
 		ev.preventDefault();
-		status.textContent = 'Indiziere … (kann bei vielen Dokumenten etwas dauern)';
+		status.textContent = t('indexing', 'Indexing … (this may take a while for many documents)');
 		try {
 			const r = await fetch(form.dataset.reindexUrl, { method: 'POST', headers: headers() });
 			const j = await r.json();
 			if (j.status === 'ok') {
 				const s = j.stats || {};
-				status.textContent = 'Fertig (' + (s.scopes || 0) + ' Bereiche): '
-					+ (s.indexed || 0) + ' neu/aktualisiert, '
-					+ (s.unchanged || 0) + ' unverändert, ' + (s.removed || 0) + ' entfernt'
-					+ ((s.errors && s.errors.length) ? ' — ' + s.errors.join('; ') : '');
+				status.textContent = t('done', 'Done ({scopes} scopes): {indexed} new/updated, {unchanged} unchanged, {removed} removed', {
+					scopes: s.scopes || 0,
+					indexed: s.indexed || 0,
+					unchanged: s.unchanged || 0,
+					removed: s.removed || 0,
+				}) + ((s.errors && s.errors.length) ? ' — ' + s.errors.join('; ') : '');
 			} else {
-				status.textContent = 'Fehler: ' + (j.message || r.statusText);
+				status.textContent = t('error', 'Error: ') + (j.message || r.statusText);
 			}
 		} catch (e) {
-			status.textContent = 'Fehler: ' + e;
+			status.textContent = t('error', 'Error: ') + e;
 		}
 	});
 });

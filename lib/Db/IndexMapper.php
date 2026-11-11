@@ -50,7 +50,8 @@ class IndexMapper extends QBMapper {
 		if ($boolean !== '') {
 			try {
 				$qb = $this->db->getQueryBuilder();
-				$qb->select('file_id', 'name', 'path', 'text')
+				$qb->select('file_id', 'name', 'path')
+					->selectAlias($qb->createFunction('SUBSTR(text, 1, 2000)'), 'text')
 					->from($this->getTableName())
 					->where($this->scopeExpr($qb, $scopes))
 					->andWhere('MATCH(`name`, `text`) AGAINST (' . $qb->createNamedParameter($boolean) . ' IN BOOLEAN MODE)')
@@ -65,7 +66,8 @@ class IndexMapper extends QBMapper {
 		}
 		if ($rows === []) {
 			$qb = $this->db->getQueryBuilder();
-			$qb->select('file_id', 'name', 'path', 'text')
+			$qb->select('file_id', 'name', 'path')
+				->selectAlias($qb->createFunction('SUBSTR(text, 1, 2000)'), 'text')
 				->from($this->getTableName())
 				->where($this->scopeExpr($qb, $scopes))
 				->andWhere($qb->expr()->orX(

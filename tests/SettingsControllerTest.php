@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace OCA\SimpleFullTextFileSearch\Tests;
 
-use OCA\SimpleFullTextFileSearch\Controller\AdminRequired;
 use OCA\SimpleFullTextFileSearch\Controller\SettingsController;
 use OCA\SimpleFullTextFileSearch\Service\IndexerService;
 use OCP\AppFramework\Http;
@@ -18,36 +17,59 @@ use PHPUnit\Framework\TestCase;
 
 class SettingsControllerTest extends TestCase {
 	/**
-	 * P1: Admin-Absicherung:
-	 * Sowohl echtes PHP-8-Attribut #[AdminRequired] als auch DocBlock @AdminRequired
-	 * muessen auf save() und reindex() vorhanden sein.
+	 * Vertrag: Die Endpunkte duerfen KEINE Relaxing-Attribute tragen
+	 * (#[NoAdminRequired], #[PublicPage], #[NoCSRFRequired]) — ohne sie verlangt
+	 * Nextclouds SecurityMiddleware Admin-Rechte + CSRF (NotAdminException bzw.
+	 * CrossSiteRequestForgeryException). Ein eigenes "AdminRequired"-Attribut
+	 * wurde bewusst entfernt: es hat bei Nextcloud keine Wirkung.
 	 */
-	public function testAttributesAndDocBlocks(): void {
+	public function testNoRelaxingAttributesOrAnnotations(): void {
 		$reflector = new \ReflectionClass(SettingsController::class);
+		$forbidden = ['NoAdminRequired', 'PublicPage', 'NoCSRFRequired'];
 
 		foreach (['save', 'reindex'] as $action) {
 			$method = $reflector->getMethod($action);
-
-			// 1. PHP 8 Attribut pruefen
-			$attributes = $method->getAttributes(AdminRequired::class);
-			$this->assertNotEmpty(
-				$attributes,
-				"Methode SettingsController::{$action} muss das PHP-8-Attribut #[AdminRequired] tragen."
-			);
-
-			// 2. DocBlock fuer aeltere NC-Versionen pruefen
 			$doc = (string)$method->getDocComment();
-			$this->assertStringContainsString(
-				'@AdminRequired',
-				$doc,
-				"Methode SettingsController::{$action} muss @AdminRequired im DocBlock behalten."
-			);
+			foreach ($forbidden as $name) {
+				$this->assertSame(
+					[],
+					$method->getAttributes($name),
+					"Methode SettingsController::{$action} darf das Attribut #[{$name}] nicht tragen."
+				);
+				$this->assertStringNotContainsString(
+					'@' . $name,
+					$doc,
+					"Methode SettingsController::{$action} darf @{ $name } nicht im DocBlock tragen."
+				);
+			}
 		}
 	}
 
 	/**
-	 * P1: Admin-ACL:
-	 * Nicht-Admin-Benutzer werden mit HTTP 403 Forbidden abgewiesen.
+	 * Negativ-Vertrag (Fail-Open-Schutz): Die Admin-Belt-DI-Deps muessen zwingend
+	 * gesetzt sein — Nullable-Defaults wuerden die Pruefung still abschalten,
+	 * sobald der Container nichts liefert.
+	 */
+	public function testAdminBeltDependenciesAreMandatory(): void {
+		$ctor = new \ReflectionMethod(SettingsController::class, '__construct');
+		foreach ($ctor->getParameters() as $param) {
+			$typeName = $param->getType()?->getName() ?? '';
+			if (in_array($typeName, [IGroupManager::class, IUserSession::class], true)) {
+				$this->assertFalse(
+					$param->isDefaultValueAvailable(),
+					"Konstruktor-Parameter {$param->getName()} darf keinen Default haben (Fail-Open-Gefahr)."
+				);
+				$this->assertFalse(
+					$param->allowsNull(),
+					"Konstruktor-Parameter {$param->getName()} darf nicht nullable sein (Fail-Open-Gefahr)."
+				);
+			}
+		}
+	}
+
+	/**
+	 * P1: Admin-ACL — Nicht-Admin-Benutzer werden mit HTTP 403 Forbidden abgewiesen
+	 * (eigene Belt-Pruefung, unabhaengig vom Core-Middleware-Lauf).
 	 */
 	public function testNonAdminAccessForbidden(): void {
 		$request = $this->createStub(IRequest::class);
@@ -60,7 +82,7 @@ class SettingsControllerTest extends TestCase {
 		$nonAdmin = $this->createStub(IUser::class);
 		$nonAdmin->method('getUID')->willReturn('standarduser');
 		$userSession->method('getUser')->willReturn($nonAdmin);
-		$groupManager->method('isAdmin')->willReturnCallback(static fn (string $uid) => $uid === 'standarduser' ? false : false);
+		$groupManager->method('isAdmin')->willReturn(false);
 
 		$controller = new SettingsController(
 			$request,
@@ -71,13 +93,36 @@ class SettingsControllerTest extends TestCase {
 			$userSession,
 		);
 
-		// save() aufrufen
 		$saveResponse = $controller->save(json_encode([['owner' => 'standarduser', 'folder' => '/Docs']]));
 		$this->assertSame(Http::STATUS_FORBIDDEN, $saveResponse->getStatus());
 
-		// reindex() aufrufen
 		$reindexResponse = $controller->reindex();
 		$this->assertSame(Http::STATUS_FORBIDDEN, $reindexResponse->getStatus());
+	}
+
+	/**
+	 * Ohne eingeloggten User (getUser() === null) ebenfalls 403 — kein Fail-Open.
+	 */
+	public function testMissingUserForbidden(): void {
+		$request = $this->createStub(IRequest::class);
+		$appConfig = $this->createStub(IAppConfig::class);
+		$indexer = $this->createStub(IndexerService::class);
+		$userManager = $this->createStub(IUserManager::class);
+		$groupManager = $this->createStub(IGroupManager::class);
+		$userSession = $this->createStub(IUserSession::class);
+
+		$userSession->method('getUser')->willReturn(null);
+
+		$controller = new SettingsController(
+			$request,
+			$appConfig,
+			$indexer,
+			$userManager,
+			$groupManager,
+			$userSession,
+		);
+
+		$this->assertSame(Http::STATUS_FORBIDDEN, $controller->reindex()->getStatus());
 	}
 
 	/**
@@ -94,7 +139,7 @@ class SettingsControllerTest extends TestCase {
 		$admin = $this->createStub(IUser::class);
 		$admin->method('getUID')->willReturn('admin');
 		$userSession->method('getUser')->willReturn($admin);
-		$groupManager->method('isAdmin')->willReturnCallback(static fn (string $uid) => $uid === 'admin' ? true : false);
+		$groupManager->method('isAdmin')->willReturnCallback(static fn (string $uid) => $uid === 'admin');
 
 		$userManager->method('get')->willReturnCallback(static fn (string $uid) => $uid === 'admin' ? $admin : null);
 		$indexer->method('indexAll')->willReturn(['indexed' => 10, 'scopes' => 1]);
