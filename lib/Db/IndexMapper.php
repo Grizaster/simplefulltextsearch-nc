@@ -102,25 +102,33 @@ class IndexMapper extends QBMapper {
 			return (int)$qb->executeStatement();
 		}
 
-		$qb = $this->db->getQueryBuilder();
-		$qb->select('id', 'owner', 'path')
-			->from($this->getTableName());
-		$rows = $qb->executeQuery()->fetchAll();
-
+		// Cursor-Pagination: nie die ganze Tabelle in den PHP-Speicher holen
+		// (grosser Bestand = sonst memory_limit).
 		$staleIds = [];
-		foreach ($rows as $row) {
-			$matched = false;
-			foreach ($activeScopes as $scope) {
-				$prefix = $this->prefixOf($scope['folder']);
-				if ($row['owner'] === $scope['owner'] && str_starts_with((string)$row['path'], $prefix)) {
-					$matched = true;
-					break;
+		$lastId = 0;
+		do {
+			$chunkQb = $this->db->getQueryBuilder();
+			$chunkQb->select('id', 'owner', 'path')
+				->from($this->getTableName())
+				->where($chunkQb->expr()->gt('id', $chunkQb->createNamedParameter($lastId, IQueryBuilder::PARAM_INT)))
+				->orderBy('id', 'ASC')
+				->setMaxResults(1000);
+			$rows = $chunkQb->executeQuery()->fetchAll();
+			foreach ($rows as $row) {
+				$lastId = (int)$row['id'];
+				$matched = false;
+				foreach ($activeScopes as $scope) {
+					$prefix = $this->prefixOf($scope['folder']);
+					if ($row['owner'] === $scope['owner'] && str_starts_with((string)$row['path'], $prefix)) {
+						$matched = true;
+						break;
+					}
+				}
+				if (!$matched) {
+					$staleIds[] = (int)$row['id'];
 				}
 			}
-			if (!$matched) {
-				$staleIds[] = (int)$row['id'];
-			}
-		}
+		} while (count($rows) === 1000);
 
 		$deleted = 0;
 		foreach (array_chunk($staleIds, 500) as $chunk) {

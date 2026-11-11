@@ -131,16 +131,28 @@ class IndexerService {
 		}
 
 		$seen = [];
-		$this->walk($node, $userFolder, $owner, $seen, $stats);
+		$seenFolders = [];
+		$this->walk($node, $userFolder, $owner, $seen, $stats, $seenFolders, 0);
 		$stats['removed'] = $this->mapper->deleteMissing($owner, $folder, array_keys($seen));
 		return $stats;
 	}
 
+	private const MAX_DEPTH = 30; // Schutz gegen zyklische/gemountete Strukturen
+
 	/** @param list<int> $seen */
-	private function walk(Folder $folder, Folder $userFolder, string $owner, array &$seen, array &$stats): void {
+	private function walk(Folder $folder, Folder $userFolder, string $owner, array &$seen, array &$stats, array &$seenFolders, int $depth = 0): void {
+		if ($depth > self::MAX_DEPTH) {
+			$this->logger->warning('simplefulltextsearch: Maximale Ordner-Tiefe in {path} erreicht — Rest uebersprungen', ['path' => $folder->getPath()]);
+			return;
+		}
+		$folderId = (int)$folder->getId();
+		if (isset($seenFolders[$folderId])) {
+			return; // Zyklus (z. B. gemountete/symlinkte Struktur)
+		}
+		$seenFolders[$folderId] = true;
 		foreach ($folder->getDirectoryListing() as $node) {
 			if ($node instanceof Folder) {
-				$this->walk($node, $userFolder, $owner, $seen, $stats);
+				$this->walk($node, $userFolder, $owner, $seen, $stats, $seenFolders, $depth + 1);
 				continue;
 			}
 			if (!$node instanceof File) {

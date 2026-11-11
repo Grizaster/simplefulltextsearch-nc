@@ -28,32 +28,34 @@ class IndexMapperTest extends TestCase {
 			['id' => 3, 'owner' => 'alice', 'path' => '/Photos/pic.jpg'],
 		];
 
-		$selectQb = $this->createStub(IQueryBuilder::class);
-		$selectQb->method('select')->willReturnSelf();
-		$selectQb->method('from')->willReturnSelf();
-
+		$expr = new class {
+			public function in(string $col, $param): string { return "$col IN (...)"; }
+			public function gt(string $col, $param): string { return "$col > $param"; }
+		};
 		$selectResult = new class($existingRows) {
 			public function __construct(private array $rows) {}
 			public function fetchAll(): array { return $this->rows; }
 		};
-		$selectQb->method('executeQuery')->willReturn($selectResult);
-
 		$deletedIds = [];
-		$deleteQb = $this->createStub(IQueryBuilder::class);
-		$deleteQb->method('delete')->willReturnSelf();
-		$deleteQb->method('where')->willReturnSelf();
-		$deleteQb->method('expr')->willReturn(new class {
-			public function in(string $col, $param): string { return "$col IN (...)"; }
-		});
-		$deleteQb->method('createNamedParameter')->willReturnCallback(function ($val) use (&$deletedIds) {
-			if (is_array($val)) {
-				$deletedIds = array_merge($deletedIds, $val);
+		// Universal-Fake: jeder getQueryBuilder()-Aufruf liefert eine frische
+		// Stub-Instanz mit allen benoetigten Methoden (Select-Chunk + Delete-Bloecke).
+		$makeQb = function () use ($expr, $selectResult, &$deletedIds) {
+			$qb = $this->createStub(IQueryBuilder::class);
+			foreach (['select', 'from', 'where', 'andWhere', 'orderBy', 'setMaxResults', 'delete'] as $m) {
+				$qb->method($m)->willReturnSelf();
 			}
-			return ':param';
-		});
-		$deleteQb->method('executeStatement')->willReturn(2);
-
-		$db->method('getQueryBuilder')->willReturnOnConsecutiveCalls($selectQb, $deleteQb);
+			$qb->method('expr')->willReturn($expr);
+			$qb->method('executeQuery')->willReturn($selectResult);
+			$qb->method('executeStatement')->willReturn(2);
+			$qb->method('createNamedParameter')->willReturnCallback(function ($val) use (&$deletedIds) {
+				if (is_array($val)) {
+					$deletedIds = array_merge($deletedIds, $val);
+				}
+				return ':param';
+			});
+			return $qb;
+		};
+		$db->method('getQueryBuilder')->willReturnCallback($makeQb);
 
 		// Aktive Konfiguration enthaelt nur noch alice -> /Docs
 		$activeScopes = [

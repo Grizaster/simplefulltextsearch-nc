@@ -52,7 +52,7 @@ class AdminSettings implements ISettings {
 				'saved' => $this->l10n->t('Saved: {n} search scope(s)'),
 				'error' => $this->l10n->t('Error: '),
 				'indexing' => $this->l10n->t('Indexing … (this may take a while for many documents)'),
-				'done' => $this->l10n->t('Done ({scopes} scopes): {indexed} new/updated, {unchanged} unchanged, {removed} removed'),
+				'scheduled' => $this->l10n->t('Indexing scheduled — it runs with the next cron (usually within minutes).'),
 			],
 		]);
 	}

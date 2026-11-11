@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace OCA\SimpleFullTextFileSearch\Tests;
 
+use OCA\SimpleFullTextFileSearch\BackgroundJob\ReindexJob;
 use OCA\SimpleFullTextFileSearch\Controller\SettingsController;
 use OCA\SimpleFullTextFileSearch\Service\IndexerService;
 use OCP\AppFramework\Http;
+use OCP\BackgroundJob\IJobList;
 use OCP\Group\IGroupManager;
 use OCP\IAppConfig;
 use OCP\IRequest;
@@ -46,15 +48,16 @@ class SettingsControllerTest extends TestCase {
 	}
 
 	/**
-	 * Negativ-Vertrag (Fail-Open-Schutz): Die Admin-Belt-DI-Deps muessen zwingend
+	 * Negativ-Vertrag (Fail-Open-Schutz): Die kritischen DI-Deps muessen zwingend
 	 * gesetzt sein — Nullable-Defaults wuerden die Pruefung still abschalten,
 	 * sobald der Container nichts liefert.
 	 */
-	public function testAdminBeltDependenciesAreMandatory(): void {
+	public function testCriticalDependenciesAreMandatory(): void {
 		$ctor = new \ReflectionMethod(SettingsController::class, '__construct');
+		$mandatory = [IGroupManager::class, IUserSession::class, IJobList::class];
 		foreach ($ctor->getParameters() as $param) {
 			$typeName = $param->getType()?->getName() ?? '';
-			if (in_array($typeName, [IGroupManager::class, IUserSession::class], true)) {
+			if (in_array($typeName, $mandatory, true)) {
 				$this->assertFalse(
 					$param->isDefaultValueAvailable(),
 					"Konstruktor-Parameter {$param->getName()} darf keinen Default haben (Fail-Open-Gefahr)."
@@ -72,25 +75,21 @@ class SettingsControllerTest extends TestCase {
 	 * (eigene Belt-Pruefung, unabhaengig vom Core-Middleware-Lauf).
 	 */
 	public function testNonAdminAccessForbidden(): void {
-		$request = $this->createStub(IRequest::class);
-		$appConfig = $this->createStub(IAppConfig::class);
-		$indexer = $this->createStub(IndexerService::class);
-		$userManager = $this->createStub(IUserManager::class);
-		$groupManager = $this->createStub(IGroupManager::class);
-		$userSession = $this->createStub(IUserSession::class);
-
 		$nonAdmin = $this->createStub(IUser::class);
 		$nonAdmin->method('getUID')->willReturn('standarduser');
+		$userSession = $this->createStub(IUserSession::class);
 		$userSession->method('getUser')->willReturn($nonAdmin);
+		$groupManager = $this->createStub(IGroupManager::class);
 		$groupManager->method('isAdmin')->willReturn(false);
 
 		$controller = new SettingsController(
-			$request,
-			$appConfig,
-			$indexer,
-			$userManager,
+			$this->createStub(IRequest::class),
+			$this->createStub(IAppConfig::class),
+			$this->createStub(IndexerService::class),
+			$this->createStub(IUserManager::class),
 			$groupManager,
 			$userSession,
+			$this->createStub(IJobList::class),
 		);
 
 		$saveResponse = $controller->save(json_encode([['owner' => 'standarduser', 'folder' => '/Docs']]));
@@ -104,53 +103,51 @@ class SettingsControllerTest extends TestCase {
 	 * Ohne eingeloggten User (getUser() === null) ebenfalls 403 — kein Fail-Open.
 	 */
 	public function testMissingUserForbidden(): void {
-		$request = $this->createStub(IRequest::class);
-		$appConfig = $this->createStub(IAppConfig::class);
-		$indexer = $this->createStub(IndexerService::class);
-		$userManager = $this->createStub(IUserManager::class);
-		$groupManager = $this->createStub(IGroupManager::class);
 		$userSession = $this->createStub(IUserSession::class);
-
 		$userSession->method('getUser')->willReturn(null);
 
 		$controller = new SettingsController(
-			$request,
-			$appConfig,
-			$indexer,
-			$userManager,
-			$groupManager,
+			$this->createStub(IRequest::class),
+			$this->createStub(IAppConfig::class),
+			$this->createStub(IndexerService::class),
+			$this->createStub(IUserManager::class),
+			$this->createStub(IGroupManager::class),
 			$userSession,
+			$this->createStub(IJobList::class),
 		);
 
 		$this->assertSame(Http::STATUS_FORBIDDEN, $controller->reindex()->getStatus());
 	}
 
 	/**
-	 * Admin-Benutzer duerfen Einstellungen speichern und reindexieren.
+	 * Admin-Benutzer duerfen speichern; reindex() plant einen EINMALIGEN
+	 * Hintergrundjob (keine synchrone Indexierung im HTTP-Request — sonst
+	 * Gateway-Timeout bei grossen Bestaenden) und liefert 'scheduled'.
 	 */
-	public function testAdminAccessGranted(): void {
-		$request = $this->createStub(IRequest::class);
-		$appConfig = $this->createStub(IAppConfig::class);
-		$indexer = $this->createStub(IndexerService::class);
-		$userManager = $this->createStub(IUserManager::class);
-		$groupManager = $this->createStub(IGroupManager::class);
-		$userSession = $this->createStub(IUserSession::class);
-
+	public function testAdminAccessGrantedAndReindexSchedulesJob(): void {
 		$admin = $this->createStub(IUser::class);
 		$admin->method('getUID')->willReturn('admin');
+		$userSession = $this->createStub(IUserSession::class);
 		$userSession->method('getUser')->willReturn($admin);
+		$groupManager = $this->createStub(IGroupManager::class);
 		$groupManager->method('isAdmin')->willReturnCallback(static fn (string $uid) => $uid === 'admin');
 
+		$userManager = $this->createStub(IUserManager::class);
 		$userManager->method('get')->willReturnCallback(static fn (string $uid) => $uid === 'admin' ? $admin : null);
-		$indexer->method('indexAll')->willReturn(['indexed' => 10, 'scopes' => 1]);
+
+		$jobList = $this->createMock(IJobList::class);
+		$jobList->expects($this->once())
+			->method('add')
+			->with(ReindexJob::class);
 
 		$controller = new SettingsController(
-			$request,
-			$appConfig,
-			$indexer,
+			$this->createStub(IRequest::class),
+			$this->createStub(IAppConfig::class),
+			$this->createStub(IndexerService::class),
 			$userManager,
 			$groupManager,
 			$userSession,
+			$jobList,
 		);
 
 		$saveResponse = $controller->save(json_encode([['owner' => 'admin', 'folder' => '/Docs']]));
@@ -158,5 +155,7 @@ class SettingsControllerTest extends TestCase {
 
 		$reindexResponse = $controller->reindex();
 		$this->assertSame(Http::STATUS_OK, $reindexResponse->getStatus());
+		$data = $reindexResponse->getData();
+		$this->assertTrue($data['scheduled'] ?? false, "reindex() muss 'scheduled' liefern (asyncer Hintergrundjob).");
 	}
 }

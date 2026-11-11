@@ -75,13 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			const r = await fetch(form.dataset.reindexUrl, { method: 'POST', headers: headers() });
 			const j = await r.json();
 			if (j.status === 'ok') {
-				const s = j.stats || {};
-				status.textContent = t('done', 'Done ({scopes} scopes): {indexed} new/updated, {unchanged} unchanged, {removed} removed', {
-					scopes: s.scopes || 0,
-					indexed: s.indexed || 0,
-					unchanged: s.unchanged || 0,
-					removed: s.removed || 0,
-				}) + ((s.errors && s.errors.length) ? ' — ' + s.errors.join('; ') : '');
+				status.textContent = t('scheduled', 'Indexing scheduled — it runs with the next cron (usually within minutes).');
 			} else {
 				status.textContent = t('error', 'Error: ') + (j.message || r.statusText);
 			}

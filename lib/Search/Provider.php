@@ -49,12 +49,23 @@ class Provider implements IProvider {
 	}
 
 	public function search(IUser $user, ISearchQuery $query): SearchResult {
+		try {
+			return $this->doSearch($user, $query);
+		} catch (\Throwable) {
+			// Nie die globale Suche crashen (z. B. fehlender/defekter UserFolder bei
+			// frischen LDAP- oder Gastnutzern): leerer Treffer statt HTTP 500.
+			return SearchResult::complete($this->l10n->t('Document search'), []);
+		}
+	}
+
+	private function doSearch(IUser $user, ISearchQuery $query): SearchResult {
 		$term = $query->getTerm();
 		$scopes = IndexerService::scopesFromConfig($this->appConfig);
 		$userFolder = $this->rootFolder->getUserFolder($user->getUID());
 		$targetLimit = $query->getLimit() > 0 ? $query->getLimit() : 20;
 
 		$entries = [];
+		$seenFileIds = [];
 		$offset = 0;
 		$batchSize = max(50, min(100, $targetLimit * 2));
 		$maxRowsToCheck = 500;
@@ -68,11 +79,17 @@ class Provider implements IProvider {
 				break;
 			}
 			foreach ($rows as $row) {
+				// Deduplizierung: dieselbe Datei kann ueber mehrere Suchbereiche
+				// (verschiedene Eigentuemer) mehrfach im Index liegen.
+				if (isset($seenFileIds[$row['file_id']])) {
+					continue;
+				}
 				$node = $userFolder->getFirstNodeById($row['file_id']);
 				// P1 Daten-Leck-Schutz: isReadable() vor jedem Ergebnis pruefen
 				if (!$node instanceof Node || !$node->isReadable()) {
 					continue; // kein Zugriff oder keine Leserechte (z. B. Drop-Only)
 				}
+				$seenFileIds[$row['file_id']] = true;
 				$entries[] = $this->buildEntry($node, $row, $term, $userFolder);
 				if (count($entries) >= $targetLimit) {
 					break;

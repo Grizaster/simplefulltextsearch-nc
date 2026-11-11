@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace OCA\SimpleFullTextFileSearch\Controller;
 
 use OCA\SimpleFullTextFileSearch\AppInfo\Application;
+use OCA\SimpleFullTextFileSearch\BackgroundJob\ReindexJob;
 use OCA\SimpleFullTextFileSearch\Service\IndexerService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\JSONResponse;
+use OCP\BackgroundJob\IJobList;
 use OCP\Group\IGroupManager;
 use OCP\IAppConfig;
 use OCP\IRequest;
@@ -35,6 +37,7 @@ class SettingsController extends Controller {
 		private IUserManager $userManager,
 		private IGroupManager $groupManager,
 		private IUserSession $userSession,
+		private IJobList $jobList,
 	) {
 		parent::__construct(Application::APP_ID, $request);
 	}
@@ -80,6 +83,11 @@ class SettingsController extends Controller {
 			return $denied;
 		}
 
-		return new JSONResponse(['status' => 'ok', 'stats' => $this->indexer->indexAll()]);
+		// Asynchron ueber einen einmaligen Hintergrundjob: ein voller Reindex
+		// groesserer Bestaende (inkl. OCR) wuerde synchron am Gateway-Timeout
+		// sterben. Der Job laeuft beim naechsten Cron-Zyklus und entfernt sich
+		// danach selbst; bereits geplant = kein zweiter Job (IJobList dedupliziert).
+		$this->jobList->add(ReindexJob::class);
+		return new JSONResponse(['status' => 'ok', 'scheduled' => true]);
 	}
 }

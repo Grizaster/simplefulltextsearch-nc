@@ -78,6 +78,16 @@ namespace OCP {
 	}
 }
 
+namespace OCP\BackgroundJob {
+	if (!interface_exists(IJobList::class)) {
+		interface IJobList {
+			public function add(string $job, mixed $argument = null);
+			public function remove(string $job, mixed $argument = null);
+			public function has(string $job, mixed $argument = null);
+		}
+	}
+}
+
 namespace OCP\Group {
 	if (!interface_exists(IGroupManager::class)) {
 		interface IGroupManager {
@@ -242,10 +252,13 @@ namespace OCP\DB\QueryBuilder {
 			public const PARAM_INT_ARRAY = 2;
 			public const PARAM_STR = 3;
 			public function select(string ...$select);
+			public function selectAlias($select, string $alias);
+			public function createFunction(string $call): string;
 			public function from(string $from, ?string $alias = null);
 			public function where($predicates);
 			public function andWhere($predicates);
 			public function delete(string $delete, ?string $alias = null);
+			public function orderBy(string $sort, string $order = 'ASC');
 			public function setMaxResults(int $maxResults);
 			public function setFirstResult(int $firstResult);
 			public function executeQuery();

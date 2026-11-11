@@ -13,7 +13,7 @@
 		"Saved: {n} search scope(s)": "Gespeichert: {n} Suchbereich(e)",
 		"Error: ": "Fehler: ",
 		"Indexing … (this may take a while for many documents)": "Indiziere … (kann bei vielen Dokumenten etwas dauern)",
-		"Done ({scopes} scopes): {indexed} new/updated, {unchanged} unchanged, {removed} removed": "Fertig ({scopes} Bereiche): {indexed} neu/aktualisiert, {unchanged} unverändert, {removed} entfernt"
+		"Indexing scheduled — it runs with the next cron (usually within minutes).": "Indizierung eingeplant — läuft mit dem nächsten Cron (meist in wenigen Minuten)."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

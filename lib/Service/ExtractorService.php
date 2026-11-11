@@ -35,8 +35,36 @@ class ExtractorService {
 			$ext === 'odt' => $this->fromZip($localPath, 'content.xml'),
 			default => '',
 		};
-		$text = preg_replace('/\s+/u', ' ', $text) ?? '';
+		$text = preg_replace('/\s+/u', ' ', $this->ensureUtf8($text)) ?? '';
 		return mb_substr(trim($text), 0, self::MAX_CHARS);
+	}
+
+	/**
+	 * Nicht-UTF8-Dateien (z. B. Windows-1252) duerfen nicht still verloren gehen:
+	 * PCRE mit /u-Modifier gibt bei ungueltigem UTF-8 null zurueck und wuerde den
+	 * gesamten Text auf '' kollabieren lassen.
+	 */
+	private function ensureUtf8(string $text): string {
+		if ($text !== '' && !mb_check_encoding($text, 'UTF-8')) {
+			return mb_convert_encoding($text, 'UTF-8', 'ISO-8859-1, Windows-1252, ASCII');
+		}
+		return $text;
+	}
+
+	private static ?bool $hasOcr = null;
+
+	/** ocrmypdf ist optional — einmal pruefen statt pro Scan ins Log zu muellen. */
+	private function hasOcr(): bool {
+		if (self::$hasOcr === null) {
+			$out = [];
+			$rc = 1;
+			exec('command -v ocrmypdf >/dev/null 2>&1', $out, $rc);
+			self::$hasOcr = $rc === 0;
+			if (!self::$hasOcr) {
+				$this->logger?->info('simplefulltextsearch: ocrmypdf nicht installiert — Scans ohne Textlayer werden uebersprungen (optional, einmalige Meldung).');
+			}
+		}
+		return self::$hasOcr;
 	}
 
 	private function fromPdf(string $p): string {
@@ -46,6 +74,9 @@ class ExtractorService {
 			return $t;
 		}
 		// 2) Scans: OCR ueber ocrmypdf (Sidecar = Gesamttext)
+		if (!$this->hasOcr()) {
+			return '';
+		}
 		// tempnam-Erzeugnisse ohne Dateiendungs-Dopplung nutzen und immer sauber im finally loeschen
 		$sidecar = tempnam(sys_get_temp_dir(), 'elds_s_');
 		$outPdf = tempnam(sys_get_temp_dir(), 'elds_o_');
@@ -77,12 +108,17 @@ class ExtractorService {
 		$outFile = tempnam(sys_get_temp_dir(), 'elds_out_');
 		try {
 			$errArg = $errFile !== false ? ' 2>' . escapeshellarg($errFile) : ' 2>/dev/null';
-			$outArg = $outFile !== false ? ' 1>' . escapeshellarg($outFile) : ' 1>/dev/null';
-			$cmd = 'timeout 120 ' . implode(' ', array_map('escapeshellarg', $args)) . $outArg . $errArg;
+			$outArg = $outFile !== false ? ' >' . escapeshellarg($outFile) : ' >/dev/null';
+			// Platten-Deckel: 'head -c' begrenzt die BESCHREIBUNG auf der Festplatte
+			// (eine Zip-Bombe darf /tmp nicht volllaufen lassen) — nach dem Deckel
+			// beendet SIGPIPE den Schreibprozess. pipefail reicht den Exit-Code des
+			// Tools durch; 141 (128+SIGPIPE) ist die erwartete, erfolgreiche Deckelung.
+			$inner = 'timeout 120 ' . implode(' ', array_map('escapeshellarg', $args))
+				. $errArg . ' | head -c ' . self::MAX_OUT . $outArg;
 			$rc = 0;
 			$ignore = [];
-			exec($cmd, $ignore, $rc);
-			if ($rc !== 0) {
+			exec('bash -c ' . escapeshellarg('set -o pipefail; ' . $inner), $ignore, $rc);
+			if ($rc !== 0 && $rc !== 141) {
 				$err = $this->readCapped($errFile, 4096);
 				$this->logger?->warning('simplefulltextsearch: Extractor CLI-Fehler bei {cmd}: Exit-Code {rc}, Fehler: {err}', [
 					'cmd' => $args[0] ?? '',

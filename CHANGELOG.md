@@ -17,6 +17,17 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/) 
 - **DB-Texttransport begrenzt:** Die Suche holt nur noch die ersten 2.000 Zeichen Text je Treffer (Snippet-Bedarf) statt ganzer Dokumente — kein Speicher-Peak mehr bei 500 Kandidaten × Volltext (`lib/Db/IndexMapper.php`).
 - **Keine lokalen Pfade mehr im Changelog:** Die bisherigen `file:///…`-Links sind relative Links geworden (keine Verrät von Entwicklungspfaden).
 
+#### Behoben (zweites, unabhängiges Audit)
+- **Platten-DoS bei Dekomprimierung (hoch):** Die Ausgabe-Begrenzung deckte nur den Speicher — die Shell-Redirection schrieb die dekomprimierte Zip-Bombe weiter komplett nach `/tmp`. Die Konsolen-Ausgabe läuft jetzt durch `head -c` (Deckel auch auf der Platte, SIGPIPE beendet den Schreibprozess); `pipefail` reicht den echten Exit-Code durch (`lib/Service/ExtractorService.php`).
+- **Zyklus-/Tiefenschutz bei der Ordnerrekursion (mittel):** `walk()` begrenzt die Tiefe (30) und merkt besuchte Ordner — gemountete/symlinkte Strukturen treiben den Index-Lauf nicht mehr endlos (`lib/Service/IndexerService.php`).
+- **Kein OOM bei großen Beständen (mittel):** `deleteOrphanedScopes()` arbeitet mit Cursor-Pagination (1.000er Blöcke) statt die ganze Tabelle in den PHP-Speicher zu holen (`lib/Db/IndexMapper.php`).
+- **Kein Gateway-Timeout beim Reindex-Knopf (mittel):** „Jetzt neu indizieren" plant einen einmaligen Hintergrundjob (`lib/BackgroundJob/ReindexJob.php`) statt synchron im HTTP-Request zu indizieren; die Antwort heißt jetzt `scheduled` (`lib/Controller/SettingsController.php`, UI).
+- **Suche crasht nicht mehr (mittel):** Fehlender/defekter UserFolder (z. B. frische LDAP-/Gastnutzer) liefert leere Treffer statt HTTP 500 (`lib/Search/Provider.php`).
+- **Ergebnis-Deduplizierung (info):** Dieselbe Datei aus mehreren Suchbereichen erscheint nur noch einmal (`lib/Search/Provider.php`).
+- **Store-Konformität (niedrig):** Interne `\OC::$server`-Nutzung in der Migration durch das bewährte `\OCP\Server`-Fallback-Muster ersetzt (Migrationsschritte erhalten kein Constructor-DI — `new $class()`); Lizenz-Tag auf `AGPL-3.0-only` aktualisiert (Alt-Wert `agpl` ist im Schema als veraltet markiert).
+- **Stiller Textverlust bei Nicht-UTF8 verhindert (niedrig):** Windows-1252/ISO-8859-1-Dateien werden nach UTF-8 konvertiert statt durch die PCRE-`/u`-Regel still auf `''` zu kollabieren (`lib/Service/ExtractorService.php`).
+- **Kein Log-Spam ohne `ocrmypdf` (niedrig):** Tool-Verfügbarkeit wird einmalig geprüft; fehlt es, überspringt der OCR-Zweig mit einer Info-Meldung statt Warnung je Scan (`lib/Service/ExtractorService.php`).
+
 ### Geändert
 - **Komplett übersetzte Oberfläche (en/de):** Alle Formular-Texte laufen über l10n (Quellsprache Englisch); die JS-Statusmeldungen werden serverseitig übersetzt mitgegeben (`lib/Settings/AdminSettings.php`, `templates/settings/admin.php`, `js/admin.js`, `l10n/de.json`).
 - **Größenlimit dedupliziert:** Der 25-MB-Index-Deckel ist eine gemeinsame Konstante (`ExtractorService::MAX_BYTES`).

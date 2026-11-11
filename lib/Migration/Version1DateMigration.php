@@ -12,6 +12,29 @@ use OCP\Migration\SimpleMigrationStep;
 use Doctrine\DBAL\Types\Types;
 
 class Version1DateMigration extends SimpleMigrationStep {
+	/**
+	 * Achtung: Nextcloud instanziert Migrationsschritte mit `new $class()` —
+	 * echtes Constructor-DI ist NICHT verfuegbar. Deshalb Nullable-DI mit
+	 * Fallback auf die oeffentliche \OCP\Server-API (identisches Muster wie
+	 * Version3RenameMigration; \OC::$server ist interne API und im Store verboten).
+	 */
+	public function __construct(
+		private ?IDBConnection $connection = null,
+	) {
+	}
+
+	private function getConnection(): ?IDBConnection {
+		if ($this->connection !== null) {
+			return $this->connection;
+		}
+		if (class_exists('\\OCP\\Server')) {
+			try {
+				return \OCP\Server::get(IDBConnection::class);
+			} catch (\Throwable) {
+			}
+		}
+		return null;
+	}
 	public function changeSchema(IOutput $output, Closure $schemaClosure, array $options): ?ISchemaWrapper {
 		/** @var ISchemaWrapper $schema */
 		$schema = $schemaClosure();
@@ -39,7 +62,11 @@ class Version1DateMigration extends SimpleMigrationStep {
 
 	public function postSchemaChange(IOutput $output, Closure $schemaClosure, array $options): void {
 		// MariaDB-InnoDB-FULLTEXT auf (name, text) — nicht ueber DBAL-Schema abbildbar.
-		$connection = \OC::$server->get(IDBConnection::class);
+		$connection = $this->getConnection();
+		if ($connection === null) {
+			$output->info('FULLTEXT-Index konnte nicht angelegt werden (keine DB-Verbindung, Fallback: LIKE-Suche)');
+			return;
+		}
 		try {
 			$connection->executeQuery('ALTER TABLE `*PREFIX*simplefulltextsearch_index` ADD FULLTEXT KEY `simplefulltextsearch_ft` (`name`, `text`)');
 		} catch (\Throwable $e) {
