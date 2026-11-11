@@ -1,5 +1,7 @@
 # SimpleFullTextFileSearch
 
+![Built with AI](https://img.shields.io/badge/Built_with-AI_assisted-2ea44f?style=flat-square)
+
 Opinionated, dependency-light full-text search over a folder of documents for
 Nextcloud. The index lives in your Nextcloud database — no search server, no
 extra services, no AI. Includes OCR for scanned pages.
@@ -82,6 +84,15 @@ them regardless of the configured provider id).
 - App id / namespace: `simplefulltextsearch` / `OCA\SimpleFullTextFileSearch`
 - The search provider id is configurable (`provider_id`, default
   `simplefulltextsearch`)
+
+## AI disclosure
+
+This app was developed **with substantial AI assistance**: design drafts, code,
+tests and documentation were largely produced by AI coding agents under human
+direction. A human maintainer specified the requirements, made the product and
+design decisions, reviewed the changes and verified the results against a live
+Nextcloud installation. The code is intentionally plain and fully AGPL-licensed
+— it is meant to be read and reviewed by humans.
 
 ## Privacy
 
