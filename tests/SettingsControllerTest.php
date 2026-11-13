@@ -9,7 +9,7 @@ use OCA\SimpleFullTextFileSearch\Controller\SettingsController;
 use OCA\SimpleFullTextFileSearch\Service\IndexerService;
 use OCP\AppFramework\Http;
 use OCP\BackgroundJob\IJobList;
-use OCP\Group\IGroupManager;
+use OCP\IGroupManager;
 use OCP\IAppConfig;
 use OCP\IRequest;
 use OCP\IUser;

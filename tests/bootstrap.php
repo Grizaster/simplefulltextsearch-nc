@@ -88,7 +88,7 @@ namespace OCP\BackgroundJob {
 	}
 }
 
-namespace OCP\Group {
+namespace OCP {
 	if (!interface_exists(IGroupManager::class)) {
 		interface IGroupManager {
 			public function isAdmin(string $uid): bool;
