@@ -99,6 +99,12 @@ Nextcloud installation. The code is intentionally plain and fully AGPL-licensed
 All indexing runs on your own server. No data ever leaves your Nextcloud — no
 external services, no cloud, no telemetry.
 
+## Contributing, support & security
+
+- **Bugs and ideas:** please use the [issue templates](https://github.com/Grizaster/simplefulltextsearch-nc/issues/new/choose) — version numbers and a log excerpt speed things up a lot.
+- **Security issues:** report them privately via the [security policy](SECURITY.md), never as a public issue.
+- **Pull requests:** see [CONTRIBUTING.md](CONTRIBUTING.md) (short — the important bit: `git commit -s`).
+
 ## License
 
 AGPL-3.0-only — see [LICENSE](LICENSE).

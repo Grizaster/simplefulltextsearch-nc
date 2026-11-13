@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 🔒 Security vulnerability
+    url: https://github.com/Grizaster/simplefulltextsearch-nc/security/advisories/new
+    about: Please report security issues privately — not as a public issue.
+  - name: 📖 Nextcloud app developer docs
+    url: https://nextcloudappstore.readthedocs.io/en/latest/developer.html
+    about: Questions about app development, certificates and the App Store.
